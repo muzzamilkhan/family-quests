@@ -26,6 +26,16 @@ export const metadata: Metadata = {
   title: "Family Quests - Adventure Awaits!",
   description: "Transform chores into epic family adventures with quests, treasures, and magical rewards.",
   generator: "v0.app",
+  icons: {
+    apple: "/apple-touch-icon.png",
+    shortcut: "/favicon.ico",
+    icon: "/favicon.ico",
+    other: {
+      rel: "mask-icon",
+      url: "/safari-pinned-tab.svg",
+      color: "#000000",
+    },
+  },
 }
 
 export default function RootLayout({
