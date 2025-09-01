@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Family {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members   User[]
+  quests    Quest[]
+  rewards   Reward[]
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String? // Profile photo URL from Vercel Blob
+  role          UserRole  @default(CHILD)
+  points        Int       @default(0)
+  permalink     String?   @unique // For child login
+  familyId      String?
+  family        Family?   @relation(fields: [familyId], references: [id])
+  accounts      Account[]
+  sessions      Session[]
+  assignments   QuestAssignment[]
+  completions   QuestCompletion[]
+  redemptions   RewardRedemption[]
+}
+
+enum UserRole {
+  PARENT
+  CHILD
+}
+
+model Quest {
+  id          String   @id @default(cuid())
+  title       String
+  points      Int      @default(1)
+  icon        String?
+  frequency   String   // e.g., 'daily', 'weekly', 'once'
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id])
+  assignments QuestAssignment[]
+  completions QuestCompletion[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model QuestAssignment {
+  id      String @id @default(cuid())
+  questId String
+  quest   Quest  @relation(fields: [questId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([questId, userId])
+}
+
+model QuestCompletion {
+  id          String   @id @default(cuid())
+  questId     String
+  quest       Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+  approvedAt  DateTime?
+  status      String   // 'pending', 'approved', 'rejected'
+}
+
+model Reward {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  pointsCost  Int
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id])
+  redemptions RewardRedemption[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RewardRedemption {
+  id          String   @id @default(cuid())
+  rewardId    String
+  reward      Reward   @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redeemedAt  DateTime @default(now())
+  fulfilledAt DateTime?
+}
+
+// Models for NextAuth.js
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
