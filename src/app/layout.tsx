@@ -27,15 +27,13 @@ export const metadata: Metadata = {
   description: "Transform chores into epic family adventures with quests, treasures, and magical rewards.",
   generator: "v0.app",
   icons: {
-    apple: "/apple-touch-icon.png",
-    shortcut: "/favicon.ico",
-    icon: "/favicon.ico",
-    other: {
-      rel: "mask-icon",
-      url: "/safari-pinned-tab.svg",
-      color: "#000000",
-    },
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32", type: "image/x-icon" },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
+  manifest: "/site.webmanifest",
 }
 
 export default function RootLayout({
