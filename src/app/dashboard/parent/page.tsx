@@ -29,6 +29,7 @@ import {
 import { api } from "~/lib/trpc-provider";
 import { toast } from "sonner";
 import { ProfileAvatar } from "~/components/profile-avatar";
+import { useRealtimeUpdates, useRealtimePendingCompletions } from "~/hooks/use-realtime-updates";
 
 export default function ParentDashboard() {
   const { data: session, status } = useSession();
@@ -59,30 +60,56 @@ export default function ParentDashboard() {
     pointsCost: 10,
   });
 
+  // Set up real-time updates
+  useRealtimeUpdates();
+
   // API queries - must be called unconditionally
   const { data: family, refetch: refetchFamily, error: familyError } = api.family.getMyFamily.useQuery(
     undefined,
-    { retry: false, enabled: !!session }
+    { 
+      retry: false, 
+      enabled: !!session,
+      refetchInterval: 10000, // Refetch family data every 10 seconds
+      refetchOnWindowFocus: true,
+    }
   );
   const { data: children, refetch: refetchChildren } = api.family.getChildren.useQuery(
     undefined,
-    { enabled: !!family, retry: false }
+    { 
+      enabled: !!family, 
+      retry: false,
+      refetchInterval: 10000,
+      refetchOnWindowFocus: true,
+    }
   );
   const { data: quests, refetch: refetchQuests } = api.quest.getAll.useQuery(
     undefined,
-    { enabled: !!family, retry: false }
+    { 
+      enabled: !!family, 
+      retry: false,
+      refetchInterval: 3000, // More frequent for quest updates
+      refetchOnWindowFocus: true,
+    }
   );
   const { data: rewards } = api.reward.getAll.useQuery(
     undefined,
-    { enabled: !!family, retry: false }
+    { 
+      enabled: !!family, 
+      retry: false,
+      refetchInterval: 10000,
+      refetchOnWindowFocus: true,
+    }
   );
-  const { data: pendingCompletions } = api.quest.getPendingCompletions.useQuery(
-    undefined,
-    { enabled: !!family, retry: false }
-  );
+  // Use the real-time pending completions hook
+  const { data: pendingCompletions } = useRealtimePendingCompletions();
   const { data: pendingRedemptions } = api.reward.getPendingRedemptions.useQuery(
     undefined,
-    { enabled: !!family, retry: false }
+    { 
+      enabled: !!family, 
+      retry: false,
+      refetchInterval: 5000,
+      refetchOnWindowFocus: true,
+    }
   );
 
   // Redirect if no family
@@ -92,13 +119,16 @@ export default function ParentDashboard() {
     }
   }, [router, familyError?.data?.code]);
 
+  const utils = api.useUtils();
+
   // Mutations
   const createQuestMutation = api.quest.create.useMutation({
     onSuccess: () => {
       toast.success("🎯 Quest created successfully!");
       setIsAddingQuest(false);
       setQuestForm({ title: "", points: 1, icon: "⭐", frequency: "daily", assignedUserIds: [] });
-      refetchQuests();
+      // Immediate cache invalidation
+      void utils.quest.getAll.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -108,8 +138,9 @@ export default function ParentDashboard() {
       toast.success("👶 Child added successfully!");
       setIsAddingChild(false);
       setChildForm({ name: "", email: "" });
-      refetchFamily();
-      refetchChildren();
+      // Immediate cache invalidation
+      void utils.family.getMyFamily.invalidate();
+      void utils.family.getChildren.invalidate();
       
       // Show permalink
       if (typeof window !== 'undefined') {
@@ -125,14 +156,18 @@ export default function ParentDashboard() {
       toast.success("🏆 Reward added to treasury!");
       setIsAddingReward(false);
       setRewardForm({ title: "", description: "", pointsCost: 10 });
+      // Immediate cache invalidation
+      void utils.reward.getAll.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
 
   const approveQuestMutation = api.quest.approve.useMutation({
     onSuccess: () => {
-      toast.success("✅ Quest approved! Points awarded!");
-      refetchQuests();
+      toast.success("✅ Quest approved! Child can now collect treasure!");
+      // Immediate cache invalidation
+      void utils.quest.getAll.invalidate();
+      void utils.quest.getPendingCompletions.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -140,7 +175,9 @@ export default function ParentDashboard() {
   const rejectQuestMutation = api.quest.reject.useMutation({
     onSuccess: () => {
       toast.success("❌ Quest rejected.");
-      refetchQuests();
+      // Immediate cache invalidation
+      void utils.quest.getAll.invalidate();
+      void utils.quest.getPendingCompletions.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -148,6 +185,8 @@ export default function ParentDashboard() {
   const fulfillRewardMutation = api.reward.fulfill.useMutation({
     onSuccess: () => {
       toast.success("🎁 Reward marked as fulfilled!");
+      // Immediate cache invalidation
+      void utils.reward.getPendingRedemptions.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });

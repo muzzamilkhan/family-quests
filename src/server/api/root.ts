@@ -3,6 +3,7 @@ import { questRouter } from "./routers/quest";
 import { familyRouter } from "./routers/family";
 import { rewardRouter } from "./routers/reward";
 import { userRouter } from "./routers/user";
+import { realtimeRouter } from "./routers/realtime";
 
 /**
  * This is the primary router for your server.
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   family: familyRouter,
   reward: rewardRouter,
   user: userRouter,
+  realtime: realtimeRouter,
 });
 
 // export type definition of API

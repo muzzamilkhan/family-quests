@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
+import { emitFamilyEvent, EVENT_TYPES } from "~/lib/events";
 
 export const questRouter = createTRPCRouter({
   create: protectedProcedure
@@ -215,19 +216,36 @@ export const questRouter = createTRPCRouter({
         });
       }
 
-      return await ctx.db.questCompletion.create({
+      const completion = await ctx.db.questCompletion.create({
         data: {
           questId: input.questId,
           userId: ctx.session.user.id,
           status: "pending",
         },
         include: {
-          quest: true,
+          quest: {
+            include: {
+              family: true,
+            },
+          },
           user: {
-            select: { id: true, name: true },
+            select: { id: true, name: true, familyId: true },
           },
         },
       });
+
+      // Emit real-time event for quest completion
+      emitFamilyEvent({
+        type: EVENT_TYPES.QUEST_COMPLETED,
+        familyId: completion.quest.family.id,
+        questId: completion.quest.id,
+        userId: completion.user.id,
+        userName: completion.user.name || "Unknown",
+        questTitle: completion.quest.title,
+        completionId: completion.id,
+      });
+
+      return completion;
     }),
 
   approve: protectedProcedure
@@ -280,9 +298,25 @@ export const questRouter = createTRPCRouter({
           approvedAt: new Date(),
         },
         include: {
-          quest: true,
+          quest: {
+            include: {
+              family: true,
+            },
+          },
           user: true,
         },
+      });
+
+      // Emit real-time event for quest approval
+      emitFamilyEvent({
+        type: EVENT_TYPES.QUEST_APPROVED,
+        familyId: updatedCompletion.quest.family.id,
+        questId: updatedCompletion.quest.id,
+        userId: updatedCompletion.user.id,
+        userName: updatedCompletion.user.name || "Unknown",
+        questTitle: updatedCompletion.quest.title,
+        points: updatedCompletion.quest.points,
+        completionId: updatedCompletion.id,
       });
 
       return updatedCompletion;
@@ -319,7 +353,11 @@ export const questRouter = createTRPCRouter({
             collectedAt: new Date(),
           },
           include: {
-            quest: true,
+            quest: {
+              include: {
+                family: true,
+              },
+            },
             user: true,
           },
         }),
@@ -332,6 +370,35 @@ export const questRouter = createTRPCRouter({
           },
         }),
       ]);
+
+      // Emit real-time event for treasure collection
+      emitFamilyEvent({
+        type: EVENT_TYPES.TREASURE_COLLECTED,
+        familyId: updatedCompletion.quest.family.id,
+        questId: updatedCompletion.quest.id,
+        userId: updatedCompletion.user.id,
+        userName: updatedCompletion.user.name || "Unknown",
+        questTitle: updatedCompletion.quest.title,
+        points: updatedCompletion.quest.points,
+        completionId: updatedCompletion.id,
+      });
+
+      // Emit points update event
+      const updatedUser = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { points: true, name: true, familyId: true },
+      });
+
+      if (updatedUser?.familyId) {
+        emitFamilyEvent({
+          type: EVENT_TYPES.POINTS_UPDATED,
+          familyId: updatedUser.familyId,
+          userId: ctx.session.user.id,
+          userName: updatedUser.name || "Unknown",
+          newPoints: updatedUser.points,
+          pointsChange: completion.quest.points,
+        });
+      }
 
       return updatedCompletion;
     }),
@@ -378,16 +445,33 @@ export const questRouter = createTRPCRouter({
         });
       }
 
-      return await ctx.db.questCompletion.update({
+      const rejectedCompletion = await ctx.db.questCompletion.update({
         where: { id: input.completionId },
         data: {
           status: "rejected",
         },
         include: {
-          quest: true,
+          quest: {
+            include: {
+              family: true,
+            },
+          },
           user: true,
         },
       });
+
+      // Emit real-time event for quest rejection
+      emitFamilyEvent({
+        type: EVENT_TYPES.QUEST_REJECTED,
+        familyId: rejectedCompletion.quest.family.id,
+        questId: rejectedCompletion.quest.id,
+        userId: rejectedCompletion.user.id,
+        userName: rejectedCompletion.user.name || "Unknown",
+        questTitle: rejectedCompletion.quest.title,
+        completionId: rejectedCompletion.id,
+      });
+
+      return rejectedCompletion;
     }),
 
   getPendingCompletions: protectedProcedure.query(async ({ ctx }) => {

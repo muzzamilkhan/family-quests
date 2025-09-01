@@ -3,9 +3,11 @@ import { type CreateNextContextOptions } from "@trpc/server/adapters/next";
 import { type Session } from "next-auth";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { observable } from "@trpc/server/observable";
 
 import { auth } from "~/server/auth";
 import { db } from "~/lib/db";
+import { globalEvents, type FamilyEvent } from "~/lib/events";
 
 /**
  * 1. CONTEXT
@@ -76,3 +78,10 @@ const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
  * Protected (authenticated) procedure
  */
 export const protectedProcedure = t.procedure.use(enforceUserIsAuthed);
+
+/**
+ * Protected subscription procedure
+ */
+export const protectedSubscription = t.procedure
+  .use(enforceUserIsAuthed)
+  .subscription;

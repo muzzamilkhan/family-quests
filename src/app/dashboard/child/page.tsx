@@ -22,6 +22,7 @@ import { api } from "~/lib/trpc-provider";
 import { toast } from "sonner";
 import { ProfileAvatar } from "~/components/profile-avatar";
 import { PointsCounter } from "~/components/points-counter";
+import { useRealtimeUpdates, useRealtimeMyQuests, useRealtimeProfile, useRealtimeLeaderboard } from "~/hooks/use-realtime-updates";
 
 // Quest completion status types
 type QuestStatus = "available" | "completed" | "approved" | "treasure";
@@ -30,7 +31,7 @@ interface QuestWithStatus {
   id: string;
   title: string;
   points: number;
-  icon?: string;
+  icon?: string | null;
   frequency: string;
   status: QuestStatus;
   completionId?: string;
@@ -42,30 +43,31 @@ export default function ChildDashboard() {
   const [completingQuest, setCompletingQuest] = useState<string | null>(null);
   const [collectingTreasure, setCollectingTreasure] = useState<string | null>(null);
 
-  // API queries - must be called unconditionally
-  const { data: userProfile } = api.user.getProfile.useQuery(
-    undefined,
-    { enabled: !!session }
-  );
-  const { data: myQuests, refetch: refetchQuests } = api.quest.getMyQuests.useQuery(
-    undefined,
-    { enabled: !!session }
-  );
+  // Set up real-time updates
+  useRealtimeUpdates();
+
+  // API queries with real-time hooks
+  const { data: userProfile } = useRealtimeProfile();
+  const { data: myQuests } = useRealtimeMyQuests();
   const { data: rewards } = api.reward.getAll.useQuery(
     undefined,
-    { enabled: !!session }
+    { 
+      enabled: !!session,
+      refetchInterval: 10000,
+      refetchOnWindowFocus: true,
+    }
   );
-  const { data: leaderboard } = api.user.getPointsLeaderboard.useQuery(
-    undefined,
-    { enabled: !!session }
-  );
+  const { data: leaderboard } = useRealtimeLeaderboard();
+
+  const utils = api.useUtils();
 
   // Mutations
   const completeQuestMutation = api.quest.complete.useMutation({
     onSuccess: () => {
       toast.success("🎯 Quest completed! Waiting for approval...");
       setCompletingQuest(null);
-      refetchQuests();
+      // Immediate cache invalidation for instant UI update
+      void utils.quest.getMyQuests.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -77,7 +79,10 @@ export default function ChildDashboard() {
     onSuccess: (data) => {
       toast.success(`🎉 +${data.quest.points} points collected! Well done, adventurer!`);
       setCollectingTreasure(null);
-      refetchQuests();
+      // Immediate cache invalidation for instant UI update
+      void utils.quest.getMyQuests.invalidate();
+      void utils.user.getProfile.invalidate();
+      void utils.user.getPointsLeaderboard.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -88,6 +93,8 @@ export default function ChildDashboard() {
   const redeemRewardMutation = api.reward.redeem.useMutation({
     onSuccess: (data) => {
       toast.success(`🏆 ${data.reward.title} redeemed! Ask your Quest Master to fulfill it.`);
+      // Immediate cache invalidation
+      void utils.user.getProfile.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
