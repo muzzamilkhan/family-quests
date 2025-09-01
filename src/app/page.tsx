@@ -1,77 +1,138 @@
-"use client"
+"use client";
 
-import { Card } from "~/components/ui/card"
-import { Crown, Sword, Sparkles } from "lucide-react"
-import Link from "next/link"
+import { useSession, signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Card } from "~/components/ui/card";
+import { Button } from "~/components/ui/button";
+import { Crown, Sword, Sparkles, Heart } from "lucide-react";
+import { api } from "~/lib/trpc-provider";
 
 export default function HomePage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Get user profile to check if they have a family
+  const { data: userProfile, isLoading: profileLoading } = api.user.getProfile.useQuery(
+    undefined,
+    { enabled: !!session }
+  );
+
+  useEffect(() => {
+    if (session && userProfile && !profileLoading) {
+      if (userProfile.family) {
+        // User has a family, redirect to appropriate dashboard
+        if (userProfile.role === "PARENT") {
+          router.push("/dashboard/parent");
+        } else {
+          router.push("/dashboard/child");
+        }
+      } else if (userProfile.role === "PARENT") {
+        // Parent without family, redirect to onboarding
+        router.push("/onboarding");
+      }
+    }
+  }, [session, userProfile, profileLoading, router]);
+
+  const handleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      await signIn("google", { callbackUrl: "/" });
+    } catch (error) {
+      console.error("Sign in error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Loading state
+  if (status === "loading" || profileLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Sparkles className="w-6 h-6 animate-spin text-primary" />
+          <span className="text-lg font-medium">Loading your adventure...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
-        {/* Logo/Title */}
-        <div className="text-center space-y-4">
-          <div className="text-6xl mb-4">🏰</div>
-          <h1 className="text-4xl font-heading font-bold text-balance">Family Quests</h1>
-          <p className="text-lg text-muted-foreground text-pretty">Transform chores into epic family adventures!</p>
-        </div>
+        {/* Hero Section */}
+        <div className="text-center space-y-6">
+          {/* Logo/Icon */}
+          <div className="relative mx-auto w-24 h-24 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center shadow-lg">
+            <Crown className="w-12 h-12 text-white" />
+            <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-accent flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+          </div>
 
-        {/* Role Selection */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-heading font-semibold text-center">Choose Your Role</h2>
+          {/* Title */}
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+              Family Quests
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Transform chores into epic adventures!
+            </p>
+          </div>
 
-          <div className="grid gap-4">
-            <Link href="/parent">
-              <Card className="p-6 hover:bg-secondary/50 transition-colors cursor-pointer border-2 hover:border-primary/30">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-treasure/20 rounded-full">
-                    <Crown className="w-8 h-8 text-treasure" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-heading font-bold text-lg">Quest Master</h3>
-                    <p className="text-sm text-muted-foreground text-pretty">
-                      Manage quests, approve adventures, and oversee the treasury
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-
-            <Link href="/child">
-              <Card className="p-6 hover:bg-secondary/50 transition-colors cursor-pointer border-2 hover:border-quest/30">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-quest/20 rounded-full">
-                    <Sword className="w-8 h-8 text-quest" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-heading font-bold text-lg">Adventurer</h3>
-                    <p className="text-sm text-muted-foreground text-pretty">
-                      Complete quests, earn points, and claim amazing rewards
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
+          {/* Features */}
+          <div className="grid grid-cols-1 gap-3 text-sm">
+            <div className="flex items-center justify-center space-x-2 text-muted-foreground">
+              <Sword className="w-4 h-4 text-primary" />
+              <span>Epic quests for kids</span>
+            </div>
+            <div className="flex items-center justify-center space-x-2 text-muted-foreground">
+              <Sparkles className="w-4 h-4 text-accent" />
+              <span>Magical rewards system</span>
+            </div>
+            <div className="flex items-center justify-center space-x-2 text-muted-foreground">
+              <Heart className="w-4 h-4 text-destructive" />
+              <span>Family adventure awaits</span>
+            </div>
           </div>
         </div>
 
-        {/* Treasury Preview */}
-        <Link href="/treasury">
-          <Card className="p-4 bg-gradient-to-r from-treasure/10 to-treasure/5 border-treasure/30 hover:shadow-lg hover:shadow-treasure/20 transition-all cursor-pointer">
-            <div className="flex items-center justify-center gap-2">
-              <Sparkles className="w-5 h-5 text-treasure" />
-              <span className="font-heading font-semibold text-treasure">Visit The Treasury</span>
-              <Sparkles className="w-5 h-5 text-treasure" />
+        {/* Auth Card */}
+        <Card className="p-8 border-2 border-primary/20 shadow-xl">
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-semibold">Begin Your Adventure</h2>
+              <p className="text-sm text-muted-foreground">
+                Sign in with Google to create your family's quest board
+              </p>
             </div>
-          </Card>
-        </Link>
 
-        {/* Footer */}
-        <div className="text-center text-sm text-muted-foreground">
-          <p className="text-pretty">
-            🌟 Adventure awaits! Complete quests, earn treasures, and become the ultimate family hero! 🌟
-          </p>
-        </div>
+            <Button
+              onClick={handleSignIn}
+              disabled={isLoading}
+              size="lg"
+              className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white shadow-lg"
+            >
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 animate-spin" />
+                  <span>Starting adventure...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <Crown className="w-4 h-4" />
+                  <span>Sign in with Google</span>
+                </div>
+              )}
+            </Button>
+
+            <p className="text-xs text-center text-muted-foreground">
+              Free forever • Safe for kids • Adventure guaranteed
+            </p>
+          </div>
+        </Card>
       </div>
     </div>
-  )
+  );
 }

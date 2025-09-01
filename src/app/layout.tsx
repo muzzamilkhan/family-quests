@@ -6,6 +6,7 @@ import { Suspense } from "react"
 import "./globals.css"
 import { TRPCReactProvider } from "~/lib/trpc-provider"
 import { SessionProvider } from "~/lib/session-provider"
+import { Toaster } from "sonner"
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -40,6 +41,7 @@ export default function RootLayout({
             <Suspense fallback={null}>
               {children}
               <Analytics />
+              <Toaster richColors position="bottom-right" />
             </Suspense>
           </SessionProvider>
         </TRPCReactProvider>
