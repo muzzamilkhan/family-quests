@@ -46,6 +46,9 @@ export default function ChildDashboard() {
   // Set up real-time updates
   useRealtimeUpdates();
 
+  // Auto-scroll when new treasures appear
+  const [previousTreasureCount, setPreviousTreasureCount] = useState(0);
+
   // API queries with real-time hooks
   const { data: userProfile } = useRealtimeProfile();
   const { data: myQuests } = useRealtimeMyQuests();
@@ -83,6 +86,12 @@ export default function ChildDashboard() {
       void utils.quest.getMyQuests.invalidate();
       void utils.user.getProfile.invalidate();
       void utils.user.getPointsLeaderboard.invalidate();
+      
+      // Auto-scroll to top to show updated points and treasury button
+      window.scrollTo({ 
+        top: 0, 
+        behavior: 'smooth' 
+      });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -95,6 +104,12 @@ export default function ChildDashboard() {
       toast.success(`🏆 ${data.reward.title} redeemed! Ask your Quest Master to fulfill it.`);
       // Immediate cache invalidation
       void utils.user.getProfile.invalidate();
+      
+      // Auto-scroll to top to show updated points
+      window.scrollTo({ 
+        top: 0, 
+        behavior: 'smooth' 
+      });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -108,6 +123,39 @@ export default function ChildDashboard() {
       router.push("/");
     }
   }, [session, status, router]);
+
+  // Auto-scroll effect when new treasures appear - must be called unconditionally
+  useEffect(() => {
+    if (myQuests && myQuests.length > 0) {
+      const currentTreasureCount = myQuests.filter(quest => {
+        const latestCompletion = quest.completions[0];
+        return latestCompletion && latestCompletion.status === "approved";
+      }).length;
+      
+      // If we got new treasures, scroll to top to show them
+      if (currentTreasureCount > previousTreasureCount && previousTreasureCount >= 0) {
+        window.scrollTo({ 
+          top: 0, 
+          behavior: 'smooth' 
+        });
+        // Show toast for new treasures
+        if (currentTreasureCount - previousTreasureCount === 1) {
+          toast.success("🎉 New treasure ready to collect! Scroll up if needed!", {
+            duration: 5000,
+          });
+        } else if (currentTreasureCount - previousTreasureCount > 1) {
+          toast.success(`🎉 ${currentTreasureCount - previousTreasureCount} new treasures ready to collect!`, {
+            duration: 5000,
+          });
+        }
+      }
+      
+      setPreviousTreasureCount(currentTreasureCount);
+    } else {
+      // Reset count when no quests
+      setPreviousTreasureCount(0);
+    }
+  }, [myQuests]);
 
   // Process quests with status
   const questsWithStatus: QuestWithStatus[] = myQuests?.map((quest) => {
@@ -145,6 +193,31 @@ export default function ChildDashboard() {
         frequency: quest.frequency,
         status: "completed" as const,
         completionId: latestCompletion.id,
+      };
+    }
+
+    if (latestCompletion.status === "collected") {
+      // Already collected - quest is done for today
+      return {
+        id: quest.id,
+        title: quest.title,
+        points: quest.points,
+        icon: quest.icon,
+        frequency: quest.frequency,
+        status: "approved" as const, // Use "approved" to indicate it's done
+        completionId: latestCompletion.id,
+      };
+    }
+
+    if (latestCompletion.status === "rejected") {
+      // Rejected - can try again
+      return {
+        id: quest.id,
+        title: quest.title,
+        points: quest.points,
+        icon: quest.icon,
+        frequency: quest.frequency,
+        status: "available" as const,
       };
     }
 
@@ -196,7 +269,16 @@ export default function ChildDashboard() {
 
   const treasureQuests = questsWithStatus.filter(q => q.status === "treasure");
   const completedQuests = questsWithStatus.filter(q => q.status === "completed");
+  const collectedQuests = questsWithStatus.filter(q => q.status === "approved"); // These are collected/done
   const availableQuests = questsWithStatus.filter(q => q.status === "available");
+
+  // Progress calculation: only count approved and collected quests (not pending approval)
+  // - "treasure" = approved by parent, ready to collect 
+  // - "approved" = collected/fully done
+  const approvedQuests = treasureQuests.length + collectedQuests.length;
+  const totalQuests = questsWithStatus.length;
+  const progressPercentage = totalQuests > 0 ? (approvedQuests / totalQuests) * 100 : 0;
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background">
@@ -205,7 +287,7 @@ export default function ChildDashboard() {
         <div className="flex h-20 items-center justify-between px-6">
           <div className="flex items-center space-x-4">
             <ProfileAvatar
-              src={userProfile.image}
+              src={userProfile.image ?? undefined}
               name={userProfile.name || "Adventurer"}
               size="lg"
             />
@@ -308,11 +390,11 @@ export default function ChildDashboard() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-lg">Quest Progress</h3>
                   <Badge variant="outline">
-                    {completedQuests.length + treasureQuests.length}/{questsWithStatus.length} Complete
+                    {approvedQuests}/{totalQuests} Complete
                   </Badge>
                 </div>
                 <Progress 
-                  value={((completedQuests.length + treasureQuests.length) / questsWithStatus.length) * 100} 
+                  value={progressPercentage} 
                   className="h-3"
                 />
                 <p className="text-sm text-muted-foreground mt-2">
@@ -528,7 +610,7 @@ export default function ChildDashboard() {
                           {index + 1}
                         </div>
                         <ProfileAvatar
-                          src={member.image}
+                          src={member.image ?? undefined}
                           name={member.name || "Adventurer"}
                           size="sm"
                         />

@@ -65,7 +65,7 @@ export function useRealtimeMyQuests() {
   const { data, ...query } = api.quest.getMyQuests.useQuery(
     undefined,
     {
-      refetchInterval: 3000, // Refetch every 3 seconds
+      refetchInterval: 2000, // More aggressive - refetch every 2 seconds for treasures
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
     }
