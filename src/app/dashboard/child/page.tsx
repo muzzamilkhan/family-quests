@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
@@ -37,21 +37,28 @@ interface QuestWithStatus {
 }
 
 export default function ChildDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [completingQuest, setCompletingQuest] = useState<string | null>(null);
+  const [collectingTreasure, setCollectingTreasure] = useState<string | null>(null);
 
-  // Redirect if not authenticated or not a child
-  if (!session) {
-    router.push("/");
-    return null;
-  }
-
-  // API queries
-  const { data: userProfile } = api.user.getProfile.useQuery();
-  const { data: myQuests, refetch: refetchQuests } = api.quest.getMyQuests.useQuery();
-  const { data: rewards } = api.reward.getAll.useQuery();
-  const { data: leaderboard } = api.user.getPointsLeaderboard.useQuery();
+  // API queries - must be called unconditionally
+  const { data: userProfile } = api.user.getProfile.useQuery(
+    undefined,
+    { enabled: !!session }
+  );
+  const { data: myQuests, refetch: refetchQuests } = api.quest.getMyQuests.useQuery(
+    undefined,
+    { enabled: !!session }
+  );
+  const { data: rewards } = api.reward.getAll.useQuery(
+    undefined,
+    { enabled: !!session }
+  );
+  const { data: leaderboard } = api.user.getPointsLeaderboard.useQuery(
+    undefined,
+    { enabled: !!session }
+  );
 
   // Mutations
   const completeQuestMutation = api.quest.complete.useMutation({
@@ -66,12 +73,34 @@ export default function ChildDashboard() {
     },
   });
 
+  const collectTreasureMutation = api.quest.collectTreasure.useMutation({
+    onSuccess: (data) => {
+      toast.success(`🎉 +${data.quest.points} points collected! Well done, adventurer!`);
+      setCollectingTreasure(null);
+      refetchQuests();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+      setCollectingTreasure(null);
+    },
+  });
+
   const redeemRewardMutation = api.reward.redeem.useMutation({
     onSuccess: (data) => {
       toast.success(`🏆 ${data.reward.title} redeemed! Ask your Quest Master to fulfill it.`);
     },
     onError: (error) => toast.error(error.message),
   });
+
+  // Redirect effect
+  useEffect(() => {
+    if (status === "loading") {
+      return;
+    }
+    if (!session) {
+      router.push("/");
+    }
+  }, [session, status, router]);
 
   // Process quests with status
   const questsWithStatus: QuestWithStatus[] = myQuests?.map((quest) => {
@@ -127,6 +156,11 @@ export default function ChildDashboard() {
     await completeQuestMutation.mutateAsync({ questId });
   };
 
+  const handleCollectTreasure = async (completionId: string) => {
+    setCollectingTreasure(completionId);
+    await collectTreasureMutation.mutateAsync({ completionId });
+  };
+
   const handleRedeemReward = async (rewardId: string) => {
     await redeemRewardMutation.mutateAsync({ rewardId });
   };
@@ -139,7 +173,10 @@ export default function ChildDashboard() {
     userProfile && reward.pointsCost > userProfile.points
   ) || [];
 
-  if (!userProfile) {
+  // Always render the same structure to avoid hydration mismatch
+  const isLoading = status === "loading" || !session || !userProfile;
+  
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background flex items-center justify-center">
         <div className="flex items-center space-x-2">
@@ -209,21 +246,38 @@ export default function ChildDashboard() {
               {treasureQuests.map((quest) => (
                 <Card 
                   key={quest.id}
-                  className="border-2 border-accent/50 bg-gradient-to-br from-accent/10 to-primary/10 hover:shadow-xl transition-all duration-300 animate-pulse cursor-pointer"
+                  className="border-2 border-accent/50 bg-gradient-to-br from-accent/10 to-primary/10 hover:shadow-xl transition-all duration-300 animate-pulse cursor-pointer hover:scale-105"
+                  onClick={() => {
+                    if (quest.completionId) {
+                      handleCollectTreasure(quest.completionId);
+                    }
+                  }}
                 >
                   <CardContent className="p-6 text-center space-y-4">
-                    <div className="text-6xl animate-bounce">
-                      🏆
-                    </div>
+                    {quest.completionId && collectingTreasure === quest.completionId ? (
+                      <div className="text-6xl animate-spin">
+                        ✨
+                      </div>
+                    ) : (
+                      <div className="text-6xl animate-bounce">
+                        🏆
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <h3 className="font-bold text-lg">{quest.title}</h3>
                       <Badge className="bg-gradient-to-r from-accent to-primary text-white text-lg px-4 py-2">
-                        +{quest.points} Points Earned!
+                        +{quest.points} Points Available!
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Tap the treasure to collect your points! ✨
-                    </p>
+                    {quest.completionId && collectingTreasure === quest.completionId ? (
+                      <p className="text-sm text-muted-foreground">
+                        Collecting treasure... ✨
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Tap the treasure to collect your points! ✨
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))}

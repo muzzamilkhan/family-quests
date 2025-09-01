@@ -6,12 +6,15 @@ import { Crown, Sword } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface ProfileAvatarProps {
-  user: {
+  user?: {
     name: string
     image?: string
     role: "parent" | "child"
     points?: number
   }
+  // Alternative props for backwards compatibility
+  src?: string
+  name?: string
   size?: "sm" | "md" | "lg"
   showRole?: boolean
   showPoints?: boolean
@@ -20,11 +23,18 @@ interface ProfileAvatarProps {
 
 export function ProfileAvatar({
   user,
+  src,
+  name,
   size = "md",
   showRole = false,
   showPoints = false,
   className,
 }: ProfileAvatarProps) {
+  // Support both user object and individual props
+  const displayName = user?.name || name || "Unknown"
+  const displayImage = user?.image || src
+  const displayRole = user?.role || "child"
+  const displayPoints = user?.points
   const sizeClasses = {
     sm: "w-8 h-8",
     md: "w-12 h-12",
@@ -32,7 +42,7 @@ export function ProfileAvatar({
   }
 
   const getRoleIcon = () => {
-    if (user.role === "parent") {
+    if (displayRole === "parent") {
       return <Crown className="w-3 h-3 text-treasure" />
     }
     return <Sword className="w-3 h-3 text-quest" />
@@ -51,8 +61,8 @@ export function ProfileAvatar({
     <div className={cn("flex flex-col items-center gap-2", className)}>
       <div className="relative">
         <Avatar className={cn(sizeClasses[size], "border-2 border-border")}>
-          <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name} />
-          <AvatarFallback className="bg-secondary font-heading font-semibold">{getInitials(user.name)}</AvatarFallback>
+          <AvatarImage src={displayImage || "/placeholder.svg"} alt={displayName} />
+          <AvatarFallback className="bg-secondary font-heading font-semibold">{getInitials(displayName)}</AvatarFallback>
         </Avatar>
 
         {showRole && (
@@ -63,11 +73,11 @@ export function ProfileAvatar({
       </div>
 
       <div className="text-center">
-        <div className="font-heading font-medium text-sm text-balance">{user.name}</div>
+        <div className="font-heading font-medium text-sm text-balance">{displayName}</div>
 
-        {showPoints && user.points !== undefined && (
+        {showPoints && displayPoints !== undefined && (
           <Badge variant="secondary" className="text-xs mt-1">
-            {user.points} pts
+            {displayPoints} pts
           </Badge>
         )}
       </div>

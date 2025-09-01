@@ -66,7 +66,9 @@ export const familyRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(1),
-        email: z.string().email().optional(),
+        email: z.string().optional().transform(email => 
+          email && email.trim() !== "" ? email : undefined
+        ).pipe(z.string().email().optional()),
       })
     )
     .mutation(async ({ ctx, input }) => {

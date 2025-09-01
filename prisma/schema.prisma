@@ -75,7 +75,8 @@ model QuestCompletion {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   completedAt DateTime @default(now())
   approvedAt  DateTime?
-  status      String   // 'pending', 'approved', 'rejected'
+  collectedAt DateTime?
+  status      String   // 'pending', 'approved', 'rejected', 'collected'
 }
 
 model Reward {

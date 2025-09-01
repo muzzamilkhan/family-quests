@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { ProfileAvatar } from "~/components/profile-avatar";
 
 export default function ParentDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [isAddingQuest, setIsAddingQuest] = useState(false);
   const [isAddingChild, setIsAddingChild] = useState(false);
@@ -59,19 +59,38 @@ export default function ParentDashboard() {
     pointsCost: 10,
   });
 
-  // Redirect if not authenticated
-  if (!session) {
-    router.push("/");
-    return null;
-  }
+  // API queries - must be called unconditionally
+  const { data: family, refetch: refetchFamily, error: familyError } = api.family.getMyFamily.useQuery(
+    undefined,
+    { retry: false, enabled: !!session }
+  );
+  const { data: children, refetch: refetchChildren } = api.family.getChildren.useQuery(
+    undefined,
+    { enabled: !!family, retry: false }
+  );
+  const { data: quests, refetch: refetchQuests } = api.quest.getAll.useQuery(
+    undefined,
+    { enabled: !!family, retry: false }
+  );
+  const { data: rewards } = api.reward.getAll.useQuery(
+    undefined,
+    { enabled: !!family, retry: false }
+  );
+  const { data: pendingCompletions } = api.quest.getPendingCompletions.useQuery(
+    undefined,
+    { enabled: !!family, retry: false }
+  );
+  const { data: pendingRedemptions } = api.reward.getPendingRedemptions.useQuery(
+    undefined,
+    { enabled: !!family, retry: false }
+  );
 
-  // API queries
-  const { data: family, refetch: refetchFamily } = api.family.getMyFamily.useQuery();
-  const { data: children } = api.family.getChildren.useQuery();
-  const { data: quests, refetch: refetchQuests } = api.quest.getAll.useQuery();
-  const { data: rewards } = api.reward.getAll.useQuery();
-  const { data: pendingCompletions } = api.quest.getPendingCompletions.useQuery();
-  const { data: pendingRedemptions } = api.reward.getPendingRedemptions.useQuery();
+  // Redirect if no family
+  useEffect(() => {
+    if (familyError?.data?.code === "NOT_FOUND") {
+      router.push("/onboarding");
+    }
+  }, [router, familyError?.data?.code]);
 
   // Mutations
   const createQuestMutation = api.quest.create.useMutation({
@@ -90,6 +109,7 @@ export default function ParentDashboard() {
       setIsAddingChild(false);
       setChildForm({ name: "", email: "" });
       refetchFamily();
+      refetchChildren();
       
       // Show permalink
       if (typeof window !== 'undefined') {
@@ -156,7 +176,10 @@ export default function ParentDashboard() {
     }
   };
 
-  if (!family) {
+  // Always render the same structure to avoid hydration mismatch
+  const isLoading = status === "loading" || !session || !family;
+  
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background flex items-center justify-center">
         <div className="flex items-center space-x-2">

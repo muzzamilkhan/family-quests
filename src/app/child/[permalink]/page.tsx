@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { Card } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Crown, Sparkles, Heart, AlertCircle } from "lucide-react";
 import { api } from "~/lib/trpc-provider";
+import { toast } from "sonner";
 
 export default function ChildLoginPage() {
   const params = useParams();
@@ -33,11 +34,19 @@ export default function ChildLoginPage() {
   const handleAutoLogin = async () => {
     setIsLoggingIn(true);
     try {
-      // For children without email, we need a custom auth flow
-      // This would need to be implemented in the auth configuration
-      router.push("/dashboard/child");
+      const result = await signIn("permalink", {
+        permalink: permalink,
+        callbackUrl: "/dashboard/child",
+        redirect: false,
+      });
+
+      if (result?.ok) {
+        router.push("/dashboard/child");
+      } else {
+        toast.error("Login failed. Please try again.");
+      }
     } catch (error) {
-      console.error("Auto login failed:", error);
+      toast.error("Login failed. Please try again.");
     } finally {
       setIsLoggingIn(false);
     }

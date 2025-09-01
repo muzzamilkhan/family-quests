@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "~/server/auth";
 
 export default async function middleware(request: NextRequest) {
-  const session = await auth();
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require authentication
@@ -16,26 +14,8 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protect all dashboard routes
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding")) {
-    if (!session) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-
-    // Role-based access control
-    if (pathname.startsWith("/dashboard/parent") && session.user.role !== "PARENT") {
-      return NextResponse.redirect(new URL("/dashboard/child", request.url));
-    }
-
-    if (pathname.startsWith("/dashboard/child") && session.user.role !== "CHILD") {
-      return NextResponse.redirect(new URL("/dashboard/parent", request.url));
-    }
-
-    if (pathname.startsWith("/onboarding") && session.user.role !== "PARENT") {
-      return NextResponse.redirect(new URL("/dashboard/child", request.url));
-    }
-  }
-
+  // For protected routes, let the page components handle auth checking
+  // This avoids the Edge Runtime + Prisma compatibility issue
   return NextResponse.next();
 }
 

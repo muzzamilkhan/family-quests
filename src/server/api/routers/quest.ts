@@ -97,13 +97,35 @@ export const questRouter = createTRPCRouter({
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // Get user's family info
+    const user = await ctx.db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: { familyId: true, role: true },
+    });
+
+    if (!user?.familyId || user.role !== "CHILD") {
+      return [];
+    }
+
     return await ctx.db.quest.findMany({
       where: {
-        assignments: {
-          some: {
-            userId: ctx.session.user.id,
+        familyId: user.familyId,
+        OR: [
+          // Specifically assigned to this child
+          {
+            assignments: {
+              some: {
+                userId: ctx.session.user.id,
+              },
+            },
           },
-        },
+          // No assignments (available to all children in family)
+          {
+            assignments: {
+              none: {},
+            },
+          },
+        ],
       },
       include: {
         completions: {
@@ -125,22 +147,47 @@ export const questRouter = createTRPCRouter({
   complete: protectedProcedure
     .input(z.object({ questId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Check if quest exists and user is assigned
+      // Get user's family info
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { familyId: true, role: true },
+      });
+
+      if (!user?.familyId || user.role !== "CHILD") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only children can complete quests",
+        });
+      }
+
+      // Check if quest exists and user can complete it (assigned OR unassigned family quest)
       const quest = await ctx.db.quest.findFirst({
         where: {
           id: input.questId,
-          assignments: {
-            some: {
-              userId: ctx.session.user.id,
+          familyId: user.familyId,
+          OR: [
+            // Specifically assigned to this child
+            {
+              assignments: {
+                some: {
+                  userId: ctx.session.user.id,
+                },
+              },
             },
-          },
+            // No assignments (available to all children in family)
+            {
+              assignments: {
+                none: {},
+              },
+            },
+          ],
         },
       });
 
       if (!quest) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "Quest not found or not assigned to user",
+          message: "Quest not found or not available to user",
         });
       }
 
@@ -225,13 +272,51 @@ export const questRouter = createTRPCRouter({
         });
       }
 
-      // Update completion status and award points
+      // Update completion status (points awarded when child collects treasure)
+      const updatedCompletion = await ctx.db.questCompletion.update({
+        where: { id: input.completionId },
+        data: {
+          status: "approved",
+          approvedAt: new Date(),
+        },
+        include: {
+          quest: true,
+          user: true,
+        },
+      });
+
+      return updatedCompletion;
+    }),
+
+  collectTreasure: protectedProcedure
+    .input(z.object({ completionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const completion = await ctx.db.questCompletion.findFirst({
+        where: {
+          id: input.completionId,
+          userId: ctx.session.user.id,
+          status: "approved",
+        },
+        include: {
+          quest: true,
+          user: true,
+        },
+      });
+
+      if (!completion) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Approved quest completion not found",
+        });
+      }
+
+      // Award points and mark as collected
       const [updatedCompletion] = await Promise.all([
         ctx.db.questCompletion.update({
           where: { id: input.completionId },
           data: {
-            status: "approved",
-            approvedAt: new Date(),
+            status: "collected",
+            collectedAt: new Date(),
           },
           include: {
             quest: true,
@@ -239,7 +324,7 @@ export const questRouter = createTRPCRouter({
           },
         }),
         ctx.db.user.update({
-          where: { id: completion.userId },
+          where: { id: ctx.session.user.id },
           data: {
             points: {
               increment: completion.quest.points,
