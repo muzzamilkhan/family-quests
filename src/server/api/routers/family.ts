@@ -99,6 +99,71 @@ export const familyRouter = createTRPCRouter({
       return { child, permalink };
     }),
 
+  addParent: protectedProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const currentUser = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { familyId: true, role: true },
+      });
+
+      if (!currentUser?.familyId || currentUser.role !== "PARENT") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only parents can add other parents to the family",
+        });
+      }
+
+      // Check if a user with this email already exists
+      const existingUser = await ctx.db.user.findUnique({
+        where: { email: input.email },
+      });
+
+      if (existingUser) {
+        // If user exists, check if they're already in a family
+        if (existingUser.familyId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This user already belongs to a family",
+          });
+        }
+        
+        // Add existing user to the family as a parent
+        const updatedUser = await ctx.db.user.update({
+          where: { email: input.email },
+          data: {
+            familyId: currentUser.familyId,
+            role: "PARENT",
+          },
+        });
+
+        return { 
+          parent: updatedUser,
+          isExistingUser: true,
+          loginUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}`
+        };
+      } else {
+        // Create a placeholder user that will be activated when they sign in with Google
+        const newParent = await ctx.db.user.create({
+          data: {
+            email: input.email,
+            role: "PARENT",
+            familyId: currentUser.familyId,
+          },
+        });
+
+        return { 
+          parent: newParent,
+          isExistingUser: false,
+          loginUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}`
+        };
+      }
+    }),
+
   getChildren: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },

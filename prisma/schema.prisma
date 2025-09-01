@@ -31,11 +31,12 @@ model User {
   permalink     String?   @unique // For child login
   familyId      String?
   family        Family?   @relation(fields: [familyId], references: [id])
-  accounts      Account[]
-  sessions      Session[]
-  assignments   QuestAssignment[]
-  completions   QuestCompletion[]
-  redemptions   RewardRedemption[]
+  accounts         Account[]
+  sessions         Session[]
+  assignments      QuestAssignment[]
+  completions      QuestCompletion[]
+  rewardAssignments RewardAssignment[]
+  redemptions      RewardRedemption[]
 }
 
 enum UserRole {
@@ -48,7 +49,10 @@ model Quest {
   title       String
   points      Int      @default(1)
   icon        String?
-  frequency   String   // e.g., 'daily', 'weekly', 'once'
+  image       String?  // Image URL from Vercel Blob
+  frequency   String   // 'daily', 'weekly', 'monthly', 'once'
+  weeklyDays  String?  // JSON array of day numbers (0-6, 0=Sunday) for weekly quests
+  monthlyDate Int?     // Day of month (1-31) for monthly quests
   familyId    String
   family      Family   @relation(fields: [familyId], references: [id])
   assignments QuestAssignment[]
@@ -83,12 +87,24 @@ model Reward {
   id          String   @id @default(cuid())
   title       String
   description String?
+  image       String?  // Image URL from Vercel Blob
   pointsCost  Int
   familyId    String
   family      Family   @relation(fields: [familyId], references: [id])
+  assignments RewardAssignment[]
   redemptions RewardRedemption[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model RewardAssignment {
+  id       String @id @default(cuid())
+  rewardId String
+  reward   Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([rewardId, userId])
 }
 
 model RewardRedemption {

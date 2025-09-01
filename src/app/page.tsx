@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
-import { Crown, Sword, Sparkles, Heart } from "lucide-react";
+import { Sword, Sparkles, Heart } from "lucide-react";
 import { api } from "~/lib/trpc-provider";
 
 export default function HomePage() {
@@ -65,7 +65,7 @@ export default function HomePage() {
         <div className="text-center space-y-6">
           {/* Logo/Icon */}
           <div className="relative mx-auto w-24 h-24 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center shadow-lg">
-            <Crown className="w-12 h-12 text-white" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-crown w-12 h-12 text-white"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path><path d="M5 21h14"></path></svg>
             <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-accent flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
@@ -121,7 +121,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="flex items-center space-x-2">
-                  <Crown className="w-4 h-4" />
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-crown w-4 h-4"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path><path d="M5 21h14"></path></svg>
                   <span>Sign in with Google</span>
                 </div>
               )}

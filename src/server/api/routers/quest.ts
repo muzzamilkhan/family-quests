@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { put } from "@vercel/blob";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { emitFamilyEvent, EVENT_TYPES } from "~/lib/events";
@@ -10,7 +11,10 @@ export const questRouter = createTRPCRouter({
         title: z.string().min(1),
         points: z.number().min(1),
         icon: z.string().optional(),
-        frequency: z.enum(["daily", "weekly", "once"]).default("daily"),
+        image: z.string().optional(),
+        frequency: z.enum(["daily", "weekly", "monthly", "once"]).default("daily"),
+        weeklyDays: z.array(z.number().min(0).max(6)).optional(),
+        monthlyDate: z.number().min(1).max(31).optional(),
         assignedUserIds: z.array(z.string()).optional(),
       })
     )
@@ -32,7 +36,10 @@ export const questRouter = createTRPCRouter({
           title: input.title,
           points: input.points,
           icon: input.icon,
+          image: input.image,
           frequency: input.frequency,
+          weeklyDays: input.weeklyDays ? JSON.stringify(input.weeklyDays) : null,
+          monthlyDate: input.monthlyDate,
           familyId: user.familyId,
           assignments: input.assignedUserIds?.length
             ? {
@@ -97,6 +104,9 @@ export const questRouter = createTRPCRouter({
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const currentDayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const currentDayOfMonth = today.getDate(); // 1-31
 
     // Get user's family info
     const user = await ctx.db.user.findUnique({
@@ -108,7 +118,8 @@ export const questRouter = createTRPCRouter({
       return [];
     }
 
-    return await ctx.db.quest.findMany({
+    // Get all quests for this family that the child can access
+    const allQuests = await ctx.db.quest.findMany({
       where: {
         familyId: user.familyId,
         OR: [
@@ -132,17 +143,70 @@ export const questRouter = createTRPCRouter({
         completions: {
           where: {
             userId: ctx.session.user.id,
-            completedAt: {
-              gte: today,
-              lt: tomorrow,
-            },
           },
           orderBy: { completedAt: "desc" },
-          take: 1,
         },
       },
       orderBy: { createdAt: "asc" },
     });
+
+    // Filter quests based on frequency and availability
+    const availableQuests = allQuests.filter(quest => {
+      switch (quest.frequency) {
+        case 'daily':
+          // Daily quests: available every day, check for today's completion
+          const todayCompletion = quest.completions.find(completion => 
+            completion.completedAt >= today && completion.completedAt < tomorrow
+          );
+          return !todayCompletion || todayCompletion.status !== 'collected';
+
+        case 'weekly':
+          // Weekly quests: only available on specified days
+          if (!quest.weeklyDays) return false;
+          const weeklyDays = JSON.parse(quest.weeklyDays) as number[];
+          if (!weeklyDays.includes(currentDayOfWeek)) return false;
+          
+          // Check if completed today
+          const weeklyTodayCompletion = quest.completions.find(completion => 
+            completion.completedAt >= today && completion.completedAt < tomorrow
+          );
+          return !weeklyTodayCompletion || weeklyTodayCompletion.status !== 'collected';
+
+        case 'monthly':
+          // Monthly quests: only available on specified day of month
+          if (quest.monthlyDate !== currentDayOfMonth) return false;
+          
+          // Check if completed this month
+          const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+          const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+          const monthlyCompletion = quest.completions.find(completion => 
+            completion.completedAt >= startOfMonth && 
+            completion.completedAt < endOfMonth &&
+            completion.status === 'collected'
+          );
+          return !monthlyCompletion;
+
+        case 'once':
+          // One-time quests: available until completed
+          const onceCompletion = quest.completions.find(completion => 
+            completion.status === 'collected'
+          );
+          return !onceCompletion;
+
+        default:
+          return false;
+      }
+    });
+
+    // Transform to include only today's completion for daily/weekly quests
+    return availableQuests.map(quest => ({
+      ...quest,
+      completions: quest.frequency === 'daily' || quest.frequency === 'weekly' 
+        ? quest.completions.filter(completion => 
+            completion.completedAt >= today && completion.completedAt < tomorrow
+          ).slice(0, 1)
+        : quest.completions.slice(0, 1) // For monthly/once, show latest completion
+    }));
   }),
 
   complete: protectedProcedure
@@ -474,6 +538,93 @@ export const questRouter = createTRPCRouter({
       return rejectedCompletion;
     }),
 
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        title: z.string().min(1).optional(),
+        points: z.number().min(1).optional(),
+        icon: z.string().optional(),
+        image: z.string().optional(),
+        frequency: z.enum(["daily", "weekly", "monthly", "once"]).optional(),
+        weeklyDays: z.array(z.number().min(0).max(6)).optional(),
+        monthlyDate: z.number().min(1).max(31).optional(),
+        assignedUserIds: z.array(z.string()).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { familyId: true, role: true },
+      });
+
+      if (!user?.familyId || user.role !== "PARENT") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only parents can update quests",
+        });
+      }
+
+      // Check if quest exists and belongs to user's family
+      const existingQuest = await ctx.db.quest.findFirst({
+        where: {
+          id: input.id,
+          familyId: user.familyId,
+        },
+        include: {
+          assignments: true,
+        },
+      });
+
+      if (!existingQuest) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quest not found or not owned by family",
+        });
+      }
+
+      // If assignedUserIds is provided, update assignments
+      let assignmentUpdate = undefined;
+      if (input.assignedUserIds !== undefined) {
+        // Delete existing assignments and create new ones
+        assignmentUpdate = {
+          assignments: {
+            deleteMany: {},
+            ...(input.assignedUserIds.length > 0 ? {
+              create: input.assignedUserIds.map((userId) => ({
+                userId,
+              })),
+            } : {}),
+          },
+        };
+      }
+
+      const quest = await ctx.db.quest.update({
+        where: { id: input.id },
+        data: {
+          ...(input.title !== undefined && { title: input.title }),
+          ...(input.points !== undefined && { points: input.points }),
+          ...(input.icon !== undefined && { icon: input.icon }),
+          ...(input.image !== undefined && { image: input.image }),
+          ...(input.frequency !== undefined && { frequency: input.frequency }),
+          ...(input.weeklyDays !== undefined && { weeklyDays: input.weeklyDays ? JSON.stringify(input.weeklyDays) : null }),
+          ...(input.monthlyDate !== undefined && { monthlyDate: input.monthlyDate }),
+          ...assignmentUpdate,
+        },
+        include: {
+          assignments: {
+            include: {
+              user: {
+                select: { id: true, name: true, image: true },
+              },
+            },
+          },
+        },
+      });
+
+      return quest;
+    }),
+
   getPendingCompletions: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
@@ -503,4 +654,68 @@ export const questRouter = createTRPCRouter({
       orderBy: { completedAt: "desc" },
     });
   }),
+
+  uploadImage: protectedProcedure
+    .input(
+      z.object({
+        questId: z.string(),
+        filename: z.string(),
+        contentType: z.string(),
+        file: z.string(), // base64 encoded file data
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { familyId: true, role: true },
+      });
+
+      if (!user?.familyId || user.role !== "PARENT") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only parents can upload quest images",
+        });
+      }
+
+      // Check if quest exists and belongs to user's family
+      const quest = await ctx.db.quest.findFirst({
+        where: {
+          id: input.questId,
+          familyId: user.familyId,
+        },
+      });
+
+      if (!quest) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quest not found or not owned by family",
+        });
+      }
+
+      // Convert base64 to buffer
+      const buffer = Buffer.from(input.file, 'base64');
+
+      // Upload to Vercel Blob
+      const blob = await put(input.filename, buffer, {
+        access: 'public',
+        contentType: input.contentType,
+      });
+
+      // Update quest's image URL in database
+      const updatedQuest = await ctx.db.quest.update({
+        where: { id: input.questId },
+        data: { image: blob.url },
+        include: {
+          assignments: {
+            include: {
+              user: {
+                select: { id: true, name: true, image: true },
+              },
+            },
+          },
+        },
+      });
+
+      return { url: blob.url, quest: updatedQuest };
+    }),
 });

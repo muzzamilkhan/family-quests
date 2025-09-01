@@ -25,7 +25,20 @@ const createInnerTRPCContext = (opts: CreateContextOptions) => {
 
 export const createTRPCContext = async (opts: CreateNextContextOptions) => {
   // Get the session from the server using the auth wrapper function
+  // Suppress NextAuth v5 + Next.js 15 compatibility warnings temporarily
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    const message = args[0]?.toString() || '';
+    if (message.includes('headers().get(') && message.includes('should be awaited')) {
+      return; // Suppress NextAuth headers warning
+    }
+    originalConsoleError.apply(console, args);
+  };
+
   const session = await auth();
+
+  // Restore original console.error
+  console.error = originalConsoleError;
 
   return createInnerTRPCContext({
     session,

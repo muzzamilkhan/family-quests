@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { put } from "@vercel/blob";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 
@@ -41,6 +42,112 @@ export const userRouter = createTRPCRouter({
           ...(input.image && { image: input.image }),
         },
       });
+    }),
+
+  updateUserName: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        name: z.string().min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const currentUser = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { familyId: true, role: true },
+      });
+
+      if (!currentUser?.familyId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "User is not part of a family",
+        });
+      }
+
+      const targetUser = await ctx.db.user.findUnique({
+        where: { id: input.userId },
+        select: { familyId: true, role: true },
+      });
+
+      if (!targetUser || targetUser.familyId !== currentUser.familyId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Target user not found in your family",
+        });
+      }
+
+      // Parents can update anyone's name, kids can only update their own
+      if (currentUser.role !== "PARENT" && input.userId !== ctx.session.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Children can only update their own name",
+        });
+      }
+
+      return await ctx.db.user.update({
+        where: { id: input.userId },
+        data: { name: input.name },
+      });
+    }),
+
+  uploadProfileImage: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        filename: z.string(),
+        contentType: z.string(),
+        file: z.string(), // base64 encoded file data
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const currentUser = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { familyId: true, role: true },
+      });
+
+      if (!currentUser?.familyId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "User is not part of a family",
+        });
+      }
+
+      const targetUser = await ctx.db.user.findUnique({
+        where: { id: input.userId },
+        select: { familyId: true, role: true },
+      });
+
+      if (!targetUser || targetUser.familyId !== currentUser.familyId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Target user not found in your family",
+        });
+      }
+
+      // Parents can update anyone's profile image, kids can only update their own
+      if (currentUser.role !== "PARENT" && input.userId !== ctx.session.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Children can only update their own profile image",
+        });
+      }
+
+      // Convert base64 to buffer
+      const buffer = Buffer.from(input.file, 'base64');
+
+      // Upload to Vercel Blob
+      const blob = await put(input.filename, buffer, {
+        access: 'public',
+        contentType: input.contentType,
+      });
+
+      // Update user's image URL in database
+      const updatedUser = await ctx.db.user.update({
+        where: { id: input.userId },
+        data: { image: blob.url },
+      });
+
+      return { url: blob.url, user: updatedUser };
     }),
 
   loginWithPermalink: publicProcedure

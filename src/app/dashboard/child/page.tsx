@@ -21,6 +21,7 @@ import {
 import { api } from "~/lib/trpc-provider";
 import { toast } from "sonner";
 import { ProfileAvatar } from "~/components/profile-avatar";
+import { EditableProfile } from "~/components/editable-profile";
 import { PointsCounter } from "~/components/points-counter";
 import { useRealtimeUpdates, useRealtimeMyQuests, useRealtimeProfile, useRealtimeLeaderboard } from "~/hooks/use-realtime-updates";
 
@@ -32,6 +33,7 @@ interface QuestWithStatus {
   title: string;
   points: number;
   icon?: string | null;
+  image?: string | null;
   frequency: string;
   status: QuestStatus;
   completionId?: string;
@@ -167,6 +169,7 @@ export default function ChildDashboard() {
         title: quest.title,
         points: quest.points,
         icon: quest.icon,
+        image: quest.image,
         frequency: quest.frequency,
         status: "available" as const,
       };
@@ -178,6 +181,7 @@ export default function ChildDashboard() {
         title: quest.title,
         points: quest.points,
         icon: quest.icon,
+        image: quest.image,
         frequency: quest.frequency,
         status: "treasure" as const,
         completionId: latestCompletion.id,
@@ -190,6 +194,7 @@ export default function ChildDashboard() {
         title: quest.title,
         points: quest.points,
         icon: quest.icon,
+        image: quest.image,
         frequency: quest.frequency,
         status: "completed" as const,
         completionId: latestCompletion.id,
@@ -203,6 +208,7 @@ export default function ChildDashboard() {
         title: quest.title,
         points: quest.points,
         icon: quest.icon,
+        image: quest.image,
         frequency: quest.frequency,
         status: "approved" as const, // Use "approved" to indicate it's done
         completionId: latestCompletion.id,
@@ -216,6 +222,7 @@ export default function ChildDashboard() {
         title: quest.title,
         points: quest.points,
         icon: quest.icon,
+        image: quest.image,
         frequency: quest.frequency,
         status: "available" as const,
       };
@@ -281,15 +288,23 @@ export default function ChildDashboard() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background p-4">
       {/* Header */}
       <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-20 items-center justify-between px-6">
-          <div className="flex items-center space-x-4">
-            <ProfileAvatar
-              src={userProfile.image ?? undefined}
-              name={userProfile.name || "Adventurer"}
-              size="lg"
+          <div className="flex items-center space-x-10">
+            <EditableProfile
+              user={{
+                id: userProfile.id,
+                name: userProfile.name,
+                image: userProfile.image,
+                role: "CHILD",
+                points: userProfile.points,
+              }}
+              canEdit={true} // Children can edit their own profiles
+              onUpdate={() => {
+                void utils.user.getProfile.invalidate();
+              }}
             />
             <div>
               <h1 className="text-2xl font-bold text-foreground">
@@ -302,13 +317,13 @@ export default function ChildDashboard() {
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <PointsCounter points={userProfile.points} />
+          <div className="flex items-center space-x-4 justify-between align-items-stretch h-20">
+            <PointsCounter points={userProfile.points} className="h-full"/>
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => router.push("/dashboard/treasury")}
-              className="border-accent text-accent hover:bg-accent hover:text-white"
+              className="h-full border-accent text-accent hover:bg-accent hover:text-white"
             >
               <Gift className="w-4 h-4 mr-2" />
               Treasury
@@ -343,14 +358,25 @@ export default function ChildDashboard() {
                   }}
                 >
                   <CardContent className="p-6 text-center space-y-4">
-                    {quest.completionId && collectingTreasure === quest.completionId ? (
-                      <div className="text-6xl animate-spin">
-                        ✨
+                    {/* Quest Image */}
+                    {quest.image ? (
+                      <div className="w-24 h-24 mx-auto rounded-full overflow-hidden border-4 border-accent/50">
+                        <img
+                          src={quest.image}
+                          alt={quest.title}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                     ) : (
-                      <div className="text-6xl animate-bounce">
-                        🏆
-                      </div>
+                      quest.completionId && collectingTreasure === quest.completionId ? (
+                        <div className="text-6xl animate-spin">
+                          ✨
+                        </div>
+                      ) : (
+                        <div className="text-6xl animate-bounce">
+                          🏆
+                        </div>
+                      )
                     )}
                     <div className="space-y-2">
                       <h3 className="font-bold text-lg">{quest.title}</h3>
@@ -415,6 +441,16 @@ export default function ChildDashboard() {
                     className="hover:shadow-lg hover:scale-105 transition-all duration-200 border-2 border-primary/20 hover:border-primary/40"
                   >
                     <CardHeader className="pb-3">
+                      {/* Quest Image */}
+                      {quest.image ? (
+                        <div className="w-full h-32 rounded-md overflow-hidden mb-3">
+                          <img
+                            src={quest.image}
+                            alt={quest.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : null}
                       <div className="flex items-center justify-between">
                         <div className="text-3xl">{quest.icon || "⭐"}</div>
                         <Badge variant="outline">+{quest.points} pts</Badge>
@@ -521,6 +557,16 @@ export default function ChildDashboard() {
                       className="border-2 border-green-200 bg-green-50/50 hover:shadow-lg transition-shadow"
                     >
                       <CardContent className="p-4">
+                        {/* Reward Image */}
+                        {reward.image && (
+                          <div className="w-full h-24 rounded-md overflow-hidden mb-3">
+                            <img
+                              src={reward.image}
+                              alt={reward.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-semibold">{reward.title}</h3>
                           <Badge className="bg-green-600 text-white">
@@ -560,6 +606,16 @@ export default function ChildDashboard() {
                         className="border-2 border-dashed border-muted-foreground/30"
                       >
                         <CardContent className="p-4">
+                          {/* Reward Image */}
+                          {reward.image && (
+                            <div className="w-full h-24 rounded-md overflow-hidden mb-3 opacity-50">
+                              <img
+                                src={reward.image}
+                                alt={reward.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="font-semibold text-muted-foreground">{reward.title}</h3>
                             <Badge variant="outline">

@@ -1,4 +1,4 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
+// import { PrismaAdapter } from "@auth/prisma-adapter"; // Removed - handling OAuth manually
 import NextAuth, { type DefaultSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -73,29 +73,80 @@ export const { handlers, auth } = NextAuth({
       // For Google OAuth, ensure user exists in database
       if (account?.provider === "google" && profile) {
         try {
-          await db.user.upsert({
+          // Check if a placeholder user already exists with this email
+          const existingUser = await db.user.findUnique({
             where: { email: user.email! },
-            update: {
-              name: user.name,
-              image: user.image,
-            },
-            create: {
-              id: user.id!,
-              email: user.email!,
-              name: user.name!,
-              image: user.image,
-              role: "PARENT",
-            },
           });
+
+          if (existingUser) {
+            // Update existing placeholder user with Google account data
+            await db.user.update({
+              where: { email: user.email! },
+              data: {
+                name: user.name || existingUser.name, // Keep existing name if Google doesn't provide one
+                image: user.image,
+                // Don't override role - keep existing role (PARENT from addParent)
+                // Don't override familyId - keep existing family connection
+              },
+            });
+            
+            // Create the OAuth account record to link Google account to existing user
+            await db.account.upsert({
+              where: {
+                provider_providerAccountId: {
+                  provider: account!.provider,
+                  providerAccountId: account!.providerAccountId,
+                },
+              },
+              update: {
+                access_token: account!.access_token,
+                refresh_token: account!.refresh_token,
+                expires_at: account!.expires_at,
+                token_type: account!.token_type,
+                scope: account!.scope,
+                id_token: account!.id_token,
+                session_state: account!.session_state as string | null,
+              },
+              create: {
+                userId: existingUser.id,
+                type: account!.type,
+                provider: account!.provider,
+                providerAccountId: account!.providerAccountId,
+                access_token: account!.access_token,
+                refresh_token: account!.refresh_token,
+                expires_at: account!.expires_at,
+                token_type: account!.token_type,
+                scope: account!.scope,
+                id_token: account!.id_token,
+                session_state: account!.session_state as string | null,
+              },
+            });
+            
+            // Update the user object to match the existing database user
+            user.id = existingUser.id;
+            user.role = existingUser.role;
+          } else {
+            // Create new user if no placeholder exists
+            await db.user.create({
+              data: {
+                id: user.id!,
+                email: user.email!,
+                name: user.name!,
+                image: user.image,
+                role: "PARENT",
+              },
+            });
+          }
         } catch (error) {
           console.error("❌ Failed to sync Google user:", error);
+          return false; // Prevent sign-in on database error
         }
       }
       
       return true;
     },
   },
-  adapter: PrismaAdapter(db), // Keep adapter for OAuth providers
+  // Removed PrismaAdapter since we handle OAuth account creation manually in signIn callback
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
