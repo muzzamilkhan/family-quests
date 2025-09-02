@@ -118,13 +118,10 @@ export default function ChildDashboard() {
 
   // Redirect effect
   useEffect(() => {
-    if (status === "loading") {
-      return;
-    }
-    if (!session) {
+    if (status === "unauthenticated") {
       router.push("/");
     }
-  }, [session, status, router]);
+  }, [status, router]);
 
   // Auto-scroll effect when new treasures appear - must be called unconditionally
   useEffect(() => {

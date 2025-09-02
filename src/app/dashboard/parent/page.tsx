@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -24,14 +24,15 @@ import {
   Copy,
   Crown,
   Sparkles,
-  Swords
+  Swords,
+  Trophy
 } from "lucide-react";
 import { api } from "~/lib/trpc-provider";
 import { toast } from "sonner";
 import { ProfileAvatar } from "~/components/profile-avatar";
 import { EditableProfile } from "~/components/editable-profile";
 import { ImageUpload } from "~/components/image-upload";
-import { useRealtimeUpdates, useRealtimePendingCompletions } from "~/hooks/use-realtime-updates";
+import { useRealtimeUpdates, useRealtimePendingCompletions, useRealtimeLeaderboard } from "~/hooks/use-realtime-updates";
 
 export default function ParentDashboard() {
   const { data: session, status } = useSession();
@@ -138,6 +139,7 @@ export default function ParentDashboard() {
   );
   // Use the real-time pending completions hook
   const { data: pendingCompletions } = useRealtimePendingCompletions();
+  const { data: leaderboard } = useRealtimeLeaderboard();
   const { data: pendingRedemptions } = api.reward.getPendingRedemptions.useQuery(
     undefined,
     { 
@@ -147,6 +149,13 @@ export default function ParentDashboard() {
       refetchOnWindowFocus: true,
     }
   );
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
 
   // Redirect if no family
   useEffect(() => {
@@ -466,89 +475,100 @@ export default function ParentDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background">
       {/* Header */}
       <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-16 items-center justify-between px-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
-              <Crown className="w-4 h-4 text-white" />
+        <div className="flex h-12 items-center justify-between px-3">
+          <div className="flex items-center space-x-2 min-w-0">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
+              <Crown className="w-3 h-3 text-white" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{family.name}</h1>
-              <p className="text-sm text-muted-foreground">Quest Master Dashboard</p>
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-foreground truncate">{family.name}</h1>
+              <p className="text-xs text-muted-foreground hidden sm:block leading-none">Quest Master Dashboard</p>
             </div>
           </div>
           <Button 
             variant="outline" 
-            onClick={() => router.push("/api/auth/signout")}
-            className="text-sm"
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="text-xs px-2 h-7"
           >
-            Sign Out
+            <span className="hidden sm:inline">Sign Out</span>
+            <span className="sm:hidden">Out</span>
           </Button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto p-6 space-y-6">
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview" className="flex items-center space-x-2">
-              <Sparkles className="w-4 h-4" />
+      <div className="container mx-auto p-2 space-y-3">
+        <Tabs defaultValue="overview" className="space-y-3">
+          <TabsList className="grid w-full grid-cols-4 h-9">
+            <TabsTrigger value="overview" className="flex items-center space-x-1 text-xs px-1">
+              <Sparkles className="w-3 h-3" />
               <span>Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="quests" className="flex items-center space-x-2">
-              <Swords className="w-4 h-4" />
-              <span>Quest Board</span>
+            <TabsTrigger value="quests" className="flex items-center space-x-1 text-xs px-1">
+              <Swords className="w-3 h-3" />
+              <span>Quests</span>
             </TabsTrigger>
-            <TabsTrigger value="treasury" className="flex items-center space-x-2">
-              <Gift className="w-4 h-4" />
+            <TabsTrigger value="treasury" className="flex items-center space-x-1 text-xs px-1">
+              <Gift className="w-3 h-3" />
               <span>Treasury</span>
             </TabsTrigger>
-            <TabsTrigger value="family" className="flex items-center space-x-2">
-              <Users className="w-4 h-4" />
+            <TabsTrigger value="family" className="flex items-center space-x-1 text-xs px-1">
+              <Users className="w-3 h-3" />
               <span>Family</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Quests</CardTitle>
-                  <Swords className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{quests?.length || 0}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Adventurers</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{children?.length || 0}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{pendingCompletions?.length || 0}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Treasury Items</CardTitle>
-                  <Gift className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{rewards?.length || 0}</div>
-                </CardContent>
-              </Card>
-            </div>
+          <TabsContent value="overview" className="space-y-3">
+            {/* Family Champions */}
+            {leaderboard && leaderboard.length > 1 && (
+              <div>
+                <div className="flex items-center space-x-2 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
+                    <Trophy className="w-3 h-3 text-white" />
+                  </div>
+                  <h2 className="text-lg font-bold">Family Champions</h2>
+                </div>
+                
+                <Card>
+                  <CardContent className="p-3">
+                    <div className="space-y-2">
+                      {leaderboard.map((member, index) => (
+                        <div 
+                          key={member.id}
+                          className={`flex items-center justify-between p-2 rounded-lg ${
+                            member.id === session?.user?.id ? 'bg-primary/10 border border-primary/20' : 'bg-secondary/30'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-r from-primary to-accent text-white font-bold text-xs">
+                              {index + 1}
+                            </div>
+                            <ProfileAvatar
+                              src={member.image || undefined}
+                              name={member.name || "Adventurer"}
+                              size="sm"
+                            />
+                            <span className={`font-medium text-sm ${
+                              member.id === session?.user?.id ? 'text-primary' : ''
+                            }`}>
+                              {member.name}
+                              {member.id === session?.user?.id && (
+                                <span className="text-xs text-primary ml-1">(You!)</span>
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Star className="w-3 h-3 text-accent" />
+                            <span className="font-bold text-sm">{member.totalPoints}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Pending Actions */}
             {(pendingCompletions && pendingCompletions.length > 0) && (
@@ -563,16 +583,16 @@ export default function ParentDashboard() {
                 <CardContent>
                   <div className="space-y-3">
                     {pendingCompletions.map((completion) => (
-                      <div key={completion.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                        <div className="flex items-center space-x-3">
+                      <div key={completion.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-2 border border-border rounded-lg space-y-2 sm:space-y-0">
+                        <div className="flex items-center space-x-2 min-w-0 flex-1">
                           <ProfileAvatar
-                            src={completion.user.image}
-                            name={completion.user.name}
+                            src={completion.user.image || undefined}
+                            name={completion.user.name || undefined}
                             size="sm"
                           />
-                          <div>
-                            <p className="font-medium">{completion.user.name}</p>
-                            <p className="text-sm text-muted-foreground">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm">{completion.user.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
                               Completed: {completion.quest.title}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -580,23 +600,24 @@ export default function ParentDashboard() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline">+{completion.quest.points} points</Badge>
+                        <div className="flex items-center space-x-1 sm:flex-shrink-0">
+                          <Badge variant="outline" className="text-xs px-1">+{completion.quest.points} pts</Badge>
                           <Button
                             size="sm"
                             onClick={() => approveQuestMutation.mutate({ completionId: completion.id })}
                             disabled={approveQuestMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700 text-white"
+                            className="bg-green-600 hover:bg-green-700 text-white h-7 w-7 p-0"
                           >
-                            <CheckCircle className="w-4 h-4" />
+                            <CheckCircle className="w-3 h-3" />
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => rejectQuestMutation.mutate({ completionId: completion.id })}
                             disabled={rejectQuestMutation.isPending}
+                            className="h-7 w-7 p-0"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
@@ -622,8 +643,8 @@ export default function ParentDashboard() {
                       <div key={redemption.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
                         <div className="flex items-center space-x-3">
                           <ProfileAvatar
-                            src={redemption.user.image}
-                            name={redemption.user.name}
+                            src={redemption.user.image || undefined}
+                            name={redemption.user.name || undefined}
                             size="sm"
                           />
                           <div>
@@ -653,66 +674,55 @@ export default function ParentDashboard() {
           </TabsContent>
 
           {/* Quest Board Tab */}
-          <TabsContent value="quests" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Quest Board</h2>
+          <TabsContent value="quests" className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+              <h2 className="text-lg font-bold">Quest Board</h2>
               <Dialog open={isAddingQuest} onOpenChange={setIsAddingQuest}>
                 <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white">
-                    <Plus className="w-4 h-4 mr-2" />
+                  <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white text-xs h-8">
+                    <Plus className="w-3 h-3 mr-1" />
                     Create Quest
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Quest</DialogTitle>
+                <DialogContent className="max-w-md max-h-[95vh] overflow-y-auto mx-2 sm:mx-auto w-full">
+                  <DialogHeader className="pb-2">
+                    <DialogTitle className="text-base">Create New Quest</DialogTitle>
                   </DialogHeader>
-                  <form onSubmit={handleCreateQuest} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Quest Title</Label>
+                  <form onSubmit={handleCreateQuest} className="space-y-4 pb-6">
+                    <div className="space-y-1">
+                      <Label htmlFor="title" className="text-xs font-medium">Quest Title</Label>
                       <Input
                         id="title"
                         placeholder="Clean the Dragon's Lair (bedroom)"
                         value={questForm.title}
                         onChange={(e) => setQuestForm({ ...questForm, title: e.target.value })}
                         required
+                        className="h-8 text-sm"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="points">Reward Points</Label>
-                        <Input
-                          id="points"
-                          type="number"
-                          min="1"
-                          value={questForm.points}
-                          onChange={(e) => setQuestForm({ ...questForm, points: parseInt(e.target.value) || 1 })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="frequency">Frequency</Label>
-                        <Select
-                          value={questForm.frequency}
-                          onValueChange={(value) => setQuestForm({ ...questForm, frequency: value as any })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                            <SelectItem value="once">One-time</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="frequency" className="text-xs font-medium">Frequency</Label>
+                      <Select
+                        value={questForm.frequency}
+                        onValueChange={(value) => setQuestForm({ ...questForm, frequency: value as any })}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="once">One-time</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     {/* Weekly Days Selection */}
                     {questForm.frequency === "weekly" && (
-                      <div className="space-y-2">
-                        <Label>Days of Week</Label>
-                        <div className="grid grid-cols-7 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium">Days of Week</Label>
+                        <div className="grid grid-cols-7 gap-1">
                           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
                             <Button
                               key={day}
@@ -725,6 +735,7 @@ export default function ParentDashboard() {
                                   : [...questForm.weeklyDays, index];
                                 setQuestForm({ ...questForm, weeklyDays: newDays });
                               }}
+                              className="h-7 text-xs px-1"
                             >
                               {day}
                             </Button>
@@ -735,8 +746,8 @@ export default function ParentDashboard() {
                     
                     {/* Monthly Date Selection */}
                     {questForm.frequency === "monthly" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="monthlyDate">Day of Month</Label>
+                      <div className="space-y-1">
+                        <Label htmlFor="monthlyDate" className="text-xs font-medium">Day of Month</Label>
                         <Input
                           id="monthlyDate"
                           type="number"
@@ -744,30 +755,45 @@ export default function ParentDashboard() {
                           max="31"
                           value={questForm.monthlyDate || ''}
                           onChange={(e) => setQuestForm({ ...questForm, monthlyDate: parseInt(e.target.value) || 1 })}
+                          className="h-8 text-sm"
                         />
                       </div>
                     )}
                     
-                      <div className="space-y-2 h-auto">
-                        <Label>Quest Image</Label>
-                        <ImageUpload
-                          currentImage={undefined}
-                          onImageChange={(imageData) => setQuestForm({ ...questForm, image: imageData })}
-                          placeholder="Add quest image"
-                          className="h-full"
-                        />
-                      </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="pointsCost" className="text-xs font-medium">Point Cost</Label>
+                      <Input
+                        id="pointsCost"
+                        type="number"
+                        min="1"
+                        value={questForm.points}
+                        onChange={(e) => setQuestForm({ ...questForm, points: parseInt(e.target.value) || 1 })}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    
+                    
+                    <div className="h-auto space-y-1">
+                      <Label className="text-xs font-medium">Quest Image (Optional)</Label>
+                      <ImageUpload
+                        currentImage={undefined}
+                        onImageChange={(imageData) => setQuestForm({ ...questForm, image: imageData })}
+                        placeholder="Add image"
+                        className="h-full"
+                      />
+                    </div>
                     
                     {/* Child Assignment */}
-                    <div className="space-y-2">
-                      <Label>Assign to Children</Label>
+                    <div className="space-y-2 bg-secondary/20 border border-border rounded-md p-3">
+                      <Label className="text-sm font-medium">Assign to Children</Label>
                       <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             type="button"
                             size="sm"
                             variant={questForm.assignedUserIds.length === 0 ? "default" : "outline"}
                             onClick={() => setQuestForm({ ...questForm, assignedUserIds: [] })}
+                            className="h-8 text-xs px-3"
                           >
                             All Children
                           </Button>
@@ -777,15 +803,16 @@ export default function ParentDashboard() {
                               size="sm"
                               variant={questForm.assignedUserIds.length === children.length && children.length > 0 ? "default" : "outline"}
                               onClick={() => setQuestForm({ ...questForm, assignedUserIds: children.map(child => child.id) })}
+                              className="h-8 text-xs px-3"
                             >
                               Select All
                             </Button>
                           )}
                         </div>
                         {children && children.length > 0 && (
-                          <div className="grid grid-cols-1 gap-2">
+                          <div className="space-y-2 max-h-28 overflow-y-auto">
                             {children.map((child) => (
-                              <div key={child.id} className="flex items-center space-x-2">
+                              <div key={child.id} className="flex items-center space-x-3 py-2 bg-background rounded border px-3">
                                 <input
                                   type="checkbox"
                                   id={`assign-${child.id}`}
@@ -796,16 +823,16 @@ export default function ParentDashboard() {
                                       : questForm.assignedUserIds.filter(id => id !== child.id);
                                     setQuestForm({ ...questForm, assignedUserIds: newAssignments });
                                   }}
-                                  className="rounded"
+                                  className="rounded h-4 w-4"
                                 />
-                                <label htmlFor={`assign-${child.id}`} className="flex items-center space-x-2 cursor-pointer flex-1">
+                                <label htmlFor={`assign-${child.id}`} className="flex items-center space-x-2 cursor-pointer flex-1 min-w-0">
                                   <ProfileAvatar
-                                    src={child.image}
-                                    name={child.name}
+                                    src={child.image || undefined}
+                                    name={child.name || undefined}
                                     size="sm"
                                   />
-                                  <span className="text-sm font-medium">{child.name}</span>
-                                  <span className="text-xs text-muted-foreground">({child.points} pts)</span>
+                                  <span className="text-sm font-medium truncate">{child.name}</span>
+                                  <span className="text-xs text-muted-foreground flex-shrink-0">({child.points} pts)</span>
                                 </label>
                               </div>
                             ))}
@@ -819,18 +846,19 @@ export default function ParentDashboard() {
                       </div>
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 pt-2">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setIsAddingQuest(false)}
+                        className="h-8 text-xs px-3 flex-1"
                       >
                         Cancel
                       </Button>
                       <Button
                         type="submit"
                         disabled={createQuestMutation.isPending}
-                        className="bg-gradient-to-r from-primary to-accent text-white"
+                        className="bg-gradient-to-r from-primary to-accent text-white h-8 text-xs px-3 flex-1"
                       >
                         Create Quest
                       </Button>
@@ -841,29 +869,27 @@ export default function ParentDashboard() {
             </div>
 
             {/* Quests Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {quests?.map((quest) => (
-                <Card key={quest.id} className="hover:shadow-md transition-shadow py-1">
-                  <CardContent className="p-3">
-                    <div className="flex justify-between py-1">
-                    <span className="flex items-center space-x-1 text-muted-foreground">
-                        <Badge className="bg-gradient-to-r from-accent to-primary text-white">
-                          {quest.points} pts
-                        </Badge>
-                      </span>
+                <Card key={quest.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-2">
+                    <div className="flex justify-between items-start mb-1">
+                      <Badge className="bg-gradient-to-r from-accent to-primary text-white text-xs px-1 py-0">
+                        {quest.points} pts
+                      </Badge>
                       <Button 
                         size="sm" 
                         variant="ghost"
                         onClick={() => handleEditQuest(quest)}
-                        className="h-6 w-6 p-0"
+                        className="h-5 w-5 p-0 -mt-0.5 -mr-0.5"
                       >
-                        <Edit className="w-3 h-3" />
+                        <Edit className="w-2.5 h-2.5" />
                       </Button>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-1">
                       {/* Quest Image */}
                       {quest.image && (
-                        <div className="w-full h-auto rounded-md overflow-hidden">
+                        <div className="w-full aspect-square rounded-md overflow-hidden">
                           <img
                             src={quest.image}
                             alt={quest.title}
@@ -872,19 +898,16 @@ export default function ParentDashboard() {
                         </div>
                       )}
                       
-                      <div className="w-full">
-                        <h3 className="font-medium text-sm leading-tight min-h-[2.5rem] flex items-center">{quest.title}</h3>
+                      <div className="min-h-[2.5rem] flex items-center">
+                        <h3 className="font-medium text-xs leading-tight">{quest.title}</h3>
                       </div>
                       
                       <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center space-x-2">
-                          
-                          <Badge variant="secondary" className="text-xs h-5">
-                            {getFrequencyDetails(quest)}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          {quest.assignments.map((assignment) => (
+                        <Badge variant="secondary" className="text-xs h-4 px-1">
+                          {getFrequencyDetails(quest)}
+                        </Badge>
+                        <div className="flex items-center space-x-0.5">
+                          {quest.assignments.slice(0, 2).map((assignment) => (
                             <ProfileAvatar
                               key={assignment.id}
                               src={assignment.user.image}
@@ -892,6 +915,9 @@ export default function ParentDashboard() {
                               size="sm"
                             />
                           ))}
+                          {quest.assignments.length > 2 && (
+                            <span className="text-xs text-muted-foreground">+{quest.assignments.length - 2}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -902,49 +928,38 @@ export default function ParentDashboard() {
 
             {/* Edit Quest Dialog */}
             <Dialog open={isEditingQuest} onOpenChange={setIsEditingQuest}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Edit Quest</DialogTitle>
+              <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto pb-4 mx-2 sm:mx-auto">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-base">Edit Quest</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleUpdateQuest} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="editTitle">Quest Title</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="editTitle" className="text-xs font-medium">Quest Title</Label>
                     <Input
                       id="editTitle"
                       placeholder="Clean the Dragon's Lair (bedroom)"
                       value={editQuestForm.title}
                       onChange={(e) => setEditQuestForm({ ...editQuestForm, title: e.target.value })}
                       required
+                      className="h-8 text-sm"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="editPoints">Reward Points</Label>
-                      <Input
-                        id="editPoints"
-                        type="number"
-                        min="1"
-                        value={editQuestForm.points}
-                        onChange={(e) => setEditQuestForm({ ...editQuestForm, points: parseInt(e.target.value) || 1 })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="editFrequency">Frequency</Label>
-                      <Select
-                        value={editQuestForm.frequency}
-                        onValueChange={(value) => setEditQuestForm({ ...editQuestForm, frequency: value as any })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                          <SelectItem value="once">One-time</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editFrequency" className="text-xs font-medium">Frequency</Label>
+                    <Select
+                      value={editQuestForm.frequency}
+                      onValueChange={(value) => setEditQuestForm({ ...editQuestForm, frequency: value as any })}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="once">One-time</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   {/* Weekly Days Selection for Edit */}
@@ -987,19 +1002,31 @@ export default function ParentDashboard() {
                     </div>
                   )}
                   
-                  <div className="space-y-2 h-auto">
-                    <Label>Quest Image</Label>
-                    <ImageUpload
-                      currentImage={editingQuest?.image || null}
-                      onImageChange={(imageData) => setEditQuestForm({ ...editQuestForm, image: imageData })}
-                      placeholder="Update quest image"
-                      className="h-full"
-                    />
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Point Cost</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={editQuestForm.points}
+                        onChange={(e) => setEditQuestForm({ ...editQuestForm, points: parseInt(e.target.value) || 1 })}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Quest Image (Optional)</Label>
+                      <ImageUpload
+                        currentImage={editingQuest?.image || null}
+                        onImageChange={(imageData) => setEditQuestForm({ ...editQuestForm, image: imageData })}
+                        placeholder="Update quest image"
+                        className="h-full"
+                      />
+                    </div>
                   </div>
                   
                   {/* Child Assignment for Edit */}
-                  <div className="space-y-2">
-                    <Label>Assign to Children</Label>
+                  <div className="space-y-2 border border-border rounded-md p-2">
+                    <Label className="text-xs font-medium">Assign to Children</Label>
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <Button
@@ -1022,9 +1049,9 @@ export default function ParentDashboard() {
                         )}
                       </div>
                       {children && children.length > 0 && (
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className="space-y-2 max-h-32 sm:max-h-24 overflow-y-auto">
                           {children.map((child) => (
-                            <div key={child.id} className="flex items-center space-x-2">
+                            <div key={child.id} className="flex items-center space-x-2 py-1">
                               <input
                                 type="checkbox"
                                 id={`edit-assign-${child.id}`}
@@ -1035,16 +1062,16 @@ export default function ParentDashboard() {
                                     : editQuestForm.assignedUserIds.filter(id => id !== child.id);
                                   setEditQuestForm({ ...editQuestForm, assignedUserIds: newAssignments });
                                 }}
-                                className="rounded"
+                                className="rounded h-4 w-4 sm:h-3 sm:w-3"
                               />
-                              <label htmlFor={`edit-assign-${child.id}`} className="flex items-center space-x-2 cursor-pointer flex-1">
+                              <label htmlFor={`edit-assign-${child.id}`} className="flex items-center space-x-2 cursor-pointer flex-1 min-w-0">
                                 <ProfileAvatar
-                                  src={child.image}
-                                  name={child.name}
+                                  src={child.image || undefined}
+                                  name={child.name || undefined}
                                   size="sm"
                                 />
-                                <span className="text-sm font-medium">{child.name}</span>
-                                <span className="text-xs text-muted-foreground">({child.points} pts)</span>
+                                <span className="text-sm sm:text-xs font-medium truncate">{child.name}</span>
+                                <span className="text-xs text-muted-foreground flex-shrink-0">({child.points} pts)</span>
                               </label>
                             </div>
                           ))}
@@ -1058,18 +1085,19 @@ export default function ParentDashboard() {
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-2">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setIsEditingQuest(false)}
+                      className="h-8 text-xs px-3 flex-1"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={updateQuestMutation.isPending}
-                      className="bg-gradient-to-r from-primary to-accent text-white"
+                      className="bg-gradient-to-r from-primary to-accent text-white h-8 text-xs px-3 flex-1"
                     >
                       {updateQuestMutation.isPending ? "Updating..." : "Update Quest"}
                     </Button>
@@ -1080,70 +1108,77 @@ export default function ParentDashboard() {
           </TabsContent>
 
           {/* Treasury Tab */}
-          <TabsContent value="treasury" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Treasury</h2>
+          <TabsContent value="treasury" className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+              <h2 className="text-lg font-bold">Treasury</h2>
               <Dialog open={isAddingReward} onOpenChange={setIsAddingReward}>
                 <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-white">
-                    <Plus className="w-4 h-4 mr-2" />
+                  <Button className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-white text-xs h-8">
+                    <Plus className="w-3 h-3 mr-1" />
                     Add Reward
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Reward</DialogTitle>
+                <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto mx-2 sm:mx-auto">
+                  <DialogHeader className="pb-2">
+                    <DialogTitle className="text-base">Add New Reward</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleCreateReward} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Reward Title</Label>
+                    <div className="space-y-1">
+                      <Label htmlFor="title" className="text-xs font-medium">Reward Title</Label>
                       <Input
                         id="title"
                         placeholder="Extra Screen Time"
                         value={rewardForm.title}
                         onChange={(e) => setRewardForm({ ...rewardForm, title: e.target.value })}
                         required
+                        className="h-8 text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
+                    <div className="space-y-1">
+                      <Label htmlFor="description" className="text-xs font-medium">Description</Label>
                       <Input
                         id="description"
                         placeholder="30 extra minutes of screen time"
                         value={rewardForm.description}
                         onChange={(e) => setRewardForm({ ...rewardForm, description: e.target.value })}
+                        className="h-8 text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Reward Image</Label>
-                      <ImageUpload
-                        currentImage={undefined}
-                        onImageChange={(imageData) => setRewardForm({ ...rewardForm, image: imageData })}
-                        placeholder="Add reward image"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="pointsCost">Point Cost</Label>
-                      <Input
-                        id="pointsCost"
-                        type="number"
-                        min="1"
-                        value={rewardForm.pointsCost}
-                        onChange={(e) => setRewardForm({ ...rewardForm, pointsCost: parseInt(e.target.value) || 1 })}
-                        required
-                      />
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="pointsCost" className="text-xs font-medium">Point Cost</Label>
+                        <Input
+                          id="pointsCost"
+                          type="number"
+                          min="1"
+                          value={rewardForm.pointsCost}
+                          onChange={(e) => setRewardForm({ ...rewardForm, pointsCost: parseInt(e.target.value) || 1 })}
+                          required
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium">Reward Image (Optional)</Label>
+                        <ImageUpload
+                          currentImage={undefined}
+                          onImageChange={(imageData) => setRewardForm({ ...rewardForm, image: imageData })}
+                          placeholder="Add reward image"
+                          className="h-full"
+                        />
+                      </div>
                     </div>
                     
                     {/* Reward Assignment */}
-                    <div className="space-y-2">
-                      <Label>Available to Children</Label>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Available to Children</Label>
                       <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1">
                           <Button
                             type="button"
                             size="sm"
                             variant={rewardForm.assignedUserIds.length === 0 ? "default" : "outline"}
                             onClick={() => setRewardForm({ ...rewardForm, assignedUserIds: [] })}
+                            className="h-7 text-xs px-2"
                           >
                             All Children
                           </Button>
@@ -1153,15 +1188,16 @@ export default function ParentDashboard() {
                               size="sm"
                               variant={rewardForm.assignedUserIds.length === children.length && children.length > 0 ? "default" : "outline"}
                               onClick={() => setRewardForm({ ...rewardForm, assignedUserIds: children.map(child => child.id) })}
+                              className="h-7 text-xs px-2"
                             >
                               Select All
                             </Button>
                           )}
                         </div>
                         {children && children.length > 0 && (
-                          <div className="grid grid-cols-1 gap-2">
+                          <div className="space-y-2 max-h-32 sm:max-h-24 overflow-y-auto border rounded-md p-2">
                             {children.map((child) => (
-                              <div key={child.id} className="flex items-center space-x-2">
+                              <div key={child.id} className="flex items-center space-x-2 py-1">
                                 <input
                                   type="checkbox"
                                   id={`reward-assign-${child.id}`}
@@ -1172,16 +1208,16 @@ export default function ParentDashboard() {
                                       : rewardForm.assignedUserIds.filter(id => id !== child.id);
                                     setRewardForm({ ...rewardForm, assignedUserIds: newAssignments });
                                   }}
-                                  className="rounded"
+                                  className="rounded h-4 w-4 sm:h-3 sm:w-3"
                                 />
-                                <label htmlFor={`reward-assign-${child.id}`} className="flex items-center space-x-2 cursor-pointer flex-1">
+                                <label htmlFor={`reward-assign-${child.id}`} className="flex items-center space-x-2 cursor-pointer flex-1 min-w-0">
                                   <ProfileAvatar
-                                    src={child.image}
-                                    name={child.name}
+                                    src={child.image || undefined}
+                                    name={child.name || undefined}
                                     size="sm"
                                   />
-                                  <span className="text-sm font-medium">{child.name}</span>
-                                  <span className="text-xs text-muted-foreground">({child.points} pts)</span>
+                                  <span className="text-sm sm:text-xs font-medium truncate">{child.name}</span>
+                                  <span className="text-xs text-muted-foreground flex-shrink-0">({child.points} pts)</span>
                                 </label>
                               </div>
                             ))}
@@ -1195,18 +1231,19 @@ export default function ParentDashboard() {
                       </div>
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 pt-2">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setIsAddingReward(false)}
+                        className="h-8 text-xs px-3 flex-1"
                       >
                         Cancel
                       </Button>
                       <Button
                         type="submit"
                         disabled={createRewardMutation.isPending}
-                        className="bg-gradient-to-r from-accent to-primary text-white"
+                        className="bg-gradient-to-r from-accent to-primary text-white h-8 text-xs px-3 flex-1"
                       >
                         Add Reward
                       </Button>
@@ -1216,32 +1253,32 @@ export default function ParentDashboard() {
               </Dialog>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {rewards?.map((reward) => (
-                <Card key={reward.id} className="hover:shadow-md transition-shadow py-1">
-                  <CardContent className="p-3">
-                    <div className="flex justify-between py-1">
-                      <span className="flex items-center space-x-1 text-muted-foreground">
-                        <Badge className="bg-gradient-to-r from-accent to-primary text-white">
-                          {reward.pointsCost} pts
-                        </Badge>
-                      </span>
+                <Card key={reward.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-2">
+                    <div className="flex justify-between items-start mb-1">
+                      <Badge className="bg-gradient-to-r from-accent to-primary text-white text-xs px-1 py-0">
+                        {reward.pointsCost} pts
+                      </Badge>
                       <Button 
                         size="sm" 
                         variant="ghost"
                         onClick={() => handleEditReward(reward)}
-                        className="h-6 w-6 p-0"
+                        className="h-5 w-5 p-0 -mt-0.5 -mr-0.5"
                       >
-                        <Edit className="w-3 h-3" />
+                        <Edit className="w-2.5 h-2.5" />
                       </Button>
                     </div>
+                    
                     {reward.title && (
-                        <p className="text-m">{reward.title}</p>
-                      )}
-                    <div className="space-y-3">
+                      <h3 className="font-medium text-xs mb-1 leading-tight">{reward.title}</h3>
+                    )}
+                    
+                    <div className="space-y-1">
                       {/* Reward Image */}
                       {reward.image && (
-                        <div className="w-full h-32 rounded-md overflow-hidden">
+                        <div className="w-full aspect-square rounded-md overflow-hidden">
                           <img
                             src={reward.image}
                             alt={reward.title}
@@ -1251,16 +1288,16 @@ export default function ParentDashboard() {
                       )}
                       
                       {reward.description && (
-                        <p className="text-sm text-muted-foreground">{reward.description}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{reward.description}</p>
                       )}
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">
-                          Redeemed {reward.redemptions.length} times
-                        </span>
+                      
+                      <div className="text-xs text-muted-foreground">
+                        Redeemed {reward.redemptions.length} times
                       </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center space-x-1">
-                          {reward.assignments.map((assignment: any) => (
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-0.5">
+                          {reward.assignments.slice(0, 2).map((assignment: any) => (
                             <ProfileAvatar
                               key={assignment.id}
                               src={assignment.user.image}
@@ -1270,6 +1307,9 @@ export default function ParentDashboard() {
                           ))}
                           {reward.assignments.length === 0 && (
                             <span className="text-xs text-muted-foreground">All children</span>
+                          )}
+                          {reward.assignments.length > 2 && (
+                            <span className="text-xs text-muted-foreground">+{reward.assignments.length - 2}</span>
                           )}
                         </div>
                       </div>
@@ -1281,48 +1321,54 @@ export default function ParentDashboard() {
 
             {/* Edit Reward Dialog */}
             <Dialog open={isEditingReward} onOpenChange={setIsEditingReward}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Edit Reward</DialogTitle>
+              <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto pb-4 mx-2 sm:mx-auto">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-base">Edit Reward</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleUpdateReward} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="editRewardTitle">Reward Title</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="editRewardTitle" className="text-xs font-medium">Reward Title</Label>
                     <Input
                       id="editRewardTitle"
                       placeholder="Extra Screen Time"
                       value={editRewardForm.title}
                       onChange={(e) => setEditRewardForm({ ...editRewardForm, title: e.target.value })}
                       required
+                      className="h-8 text-sm"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editRewardDescription">Description</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="editRewardDescription" className="text-xs font-medium">Description</Label>
                     <Input
                       id="editRewardDescription"
                       placeholder="30 extra minutes of screen time"
                       value={editRewardForm.description}
                       onChange={(e) => setEditRewardForm({ ...editRewardForm, description: e.target.value })}
+                      className="h-8 text-sm"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Reward Image</Label>
-                    <ImageUpload
-                      currentImage={editingReward?.image || undefined}
-                      onImageChange={(imageData) => setEditRewardForm({ ...editRewardForm, image: imageData })}
-                      placeholder="Update reward image"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editRewardPointsCost">Point Cost</Label>
-                    <Input
-                      id="editRewardPointsCost"
-                      type="number"
-                      min="1"
-                      value={editRewardForm.pointsCost}
-                      onChange={(e) => setEditRewardForm({ ...editRewardForm, pointsCost: parseInt(e.target.value) || 1 })}
-                      required
-                    />
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="editRewardPointsCost" className="text-xs font-medium">Point Cost</Label>
+                      <Input
+                        id="editRewardPointsCost"
+                        type="number"
+                        min="1"
+                        value={editRewardForm.pointsCost}
+                        onChange={(e) => setEditRewardForm({ ...editRewardForm, pointsCost: parseInt(e.target.value) || 1 })}
+                        required
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Reward Image (Optional)</Label>
+                      <ImageUpload
+                        currentImage={editingReward?.image || undefined}
+                        onImageChange={(imageData) => setEditRewardForm({ ...editRewardForm, image: imageData })}
+                        placeholder="Update reward image"
+                        className="h-full"
+                      />
+                    </div>
                   </div>
                   
                   {/* Reward Assignment for Edit */}
@@ -1350,9 +1396,9 @@ export default function ParentDashboard() {
                         )}
                       </div>
                       {children && children.length > 0 && (
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className="space-y-2 max-h-32 sm:max-h-24 overflow-y-auto border rounded-md p-2">
                           {children.map((child) => (
-                            <div key={child.id} className="flex items-center space-x-2">
+                            <div key={child.id} className="flex items-center space-x-2 py-1">
                               <input
                                 type="checkbox"
                                 id={`edit-reward-assign-${child.id}`}
@@ -1363,16 +1409,16 @@ export default function ParentDashboard() {
                                     : editRewardForm.assignedUserIds.filter(id => id !== child.id);
                                   setEditRewardForm({ ...editRewardForm, assignedUserIds: newAssignments });
                                 }}
-                                className="rounded"
+                                className="rounded h-4 w-4 sm:h-3 sm:w-3"
                               />
-                              <label htmlFor={`edit-reward-assign-${child.id}`} className="flex items-center space-x-2 cursor-pointer flex-1">
+                              <label htmlFor={`edit-reward-assign-${child.id}`} className="flex items-center space-x-2 cursor-pointer flex-1 min-w-0">
                                 <ProfileAvatar
-                                  src={child.image}
-                                  name={child.name}
+                                  src={child.image || undefined}
+                                  name={child.name || undefined}
                                   size="sm"
                                 />
-                                <span className="text-sm font-medium">{child.name}</span>
-                                <span className="text-xs text-muted-foreground">({child.points} pts)</span>
+                                <span className="text-sm sm:text-xs font-medium truncate">{child.name}</span>
+                                <span className="text-xs text-muted-foreground flex-shrink-0">({child.points} pts)</span>
                               </label>
                             </div>
                           ))}
@@ -1386,18 +1432,19 @@ export default function ParentDashboard() {
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-2">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setIsEditingReward(false)}
+                      className="h-8 text-xs px-3 flex-1"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={updateRewardMutation.isPending}
-                      className="bg-gradient-to-r from-accent to-primary text-white"
+                      className="bg-gradient-to-r from-accent to-primary text-white h-8 text-xs px-3 flex-1"
                     >
                       {updateRewardMutation.isPending ? "Updating..." : "Update Reward"}
                     </Button>
@@ -1408,25 +1455,25 @@ export default function ParentDashboard() {
           </TabsContent>
 
           {/* Family Tab */}
-          <TabsContent value="family" className="space-y-6">
-            {/* Header Section - Full Width */}
-            <div className="flex justify-between items-center space-x-2">
-              <h2 className="text-2xl font-bold">Family Members</h2>
-              <div className="flex space-x-2">
+          <TabsContent value="family" className="space-y-3">
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
+              <h2 className="text-lg font-bold">Family Members</h2>
+              <div className="flex flex-col xs:flex-row space-y-1 xs:space-y-0 xs:space-x-2 w-full sm:w-auto">
                 <Dialog open={isAddingParent} onOpenChange={setIsAddingParent}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">
-                      <Plus className="w-4 h-4 mr-2" />
+                    <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white text-xs h-8 w-full xs:w-auto">
+                      <Plus className="w-3 h-3 mr-1" />
                       Add Parent
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Another Parent</DialogTitle>
+                  <DialogContent className="max-w-sm">
+                    <DialogHeader className="pb-2">
+                      <DialogTitle className="text-base">Add Another Parent</DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleAddParent} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="parentEmail">Parent's Gmail Address</Label>
+                    <form onSubmit={handleAddParent} className="space-y-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="parentEmail" className="text-xs font-medium">Parent's Gmail Address</Label>
                         <Input
                           id="parentEmail"
                           type="email"
@@ -1434,20 +1481,21 @@ export default function ParentDashboard() {
                           value={parentForm.email}
                           onChange={(e) => setParentForm({ email: e.target.value })}
                           required
+                          className="h-8 text-sm"
                         />
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           They'll be able to login with this Gmail account and manage quests together.
                         </p>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2 pt-2">
                         <Button 
                           type="submit" 
                           disabled={addParentMutation.isPending}
-                          className="flex-1 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
+                          className="flex-1 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white h-8 text-xs"
                         >
                           {addParentMutation.isPending ? "Adding..." : "Add Parent"}
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => setIsAddingParent(false)}>
+                        <Button type="button" variant="outline" onClick={() => setIsAddingParent(false)} className="h-8 text-xs px-3">
                           Cancel
                         </Button>
                       </div>
@@ -1457,51 +1505,54 @@ export default function ParentDashboard() {
                   
                   <Dialog open={isAddingChild} onOpenChange={setIsAddingChild}>
                     <DialogTrigger asChild>
-                      <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white">
-                        <Plus className="w-4 h-4 mr-2" />
+                      <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white text-xs h-8 w-full xs:w-auto">
+                        <Plus className="w-3 h-3 mr-1" />
                         Add Child
                       </Button>
                     </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add New Adventurer</DialogTitle>
+                  <DialogContent className="max-w-sm">
+                    <DialogHeader className="pb-2">
+                      <DialogTitle className="text-base">Add New Adventurer</DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleAddChild} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Child's Name</Label>
+                    <form onSubmit={handleAddChild} className="space-y-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="name" className="text-xs font-medium">Child's Name</Label>
                         <Input
                           id="name"
                           placeholder="Alex"
                           value={childForm.name}
                           onChange={(e) => setChildForm({ ...childForm, name: e.target.value })}
                           required
+                          className="h-8 text-sm"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email (Optional)</Label>
+                      <div className="space-y-1">
+                        <Label htmlFor="email" className="text-xs font-medium">Email (Optional)</Label>
                         <Input
                           id="email"
                           type="email"
                           placeholder="alex@family.com"
                           value={childForm.email}
                           onChange={(e) => setChildForm({ ...childForm, email: e.target.value })}
+                          className="h-8 text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
                           If provided, they can also login with Google
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 pt-2">
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => setIsAddingChild(false)}
+                          className="flex-1 h-8 text-xs"
                         >
                           Cancel
                         </Button>
                         <Button
                           type="submit"
                           disabled={addChildMutation.isPending}
-                          className="bg-gradient-to-r from-primary to-accent text-white"
+                          className="bg-gradient-to-r from-primary to-accent text-white flex-1 h-8 text-xs"
                         >
                           Add Adventurer
                         </Button>
@@ -1511,10 +1562,10 @@ export default function ParentDashboard() {
                 </Dialog>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {/* Quest Masters Column */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-muted-foreground">Quest Masters</h3>
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground">Quest Masters</h3>
                 {family?.members && family.members.filter(member => member.role === "PARENT").length > 0 ? (
                   <div className="space-y-4">
                     {family.members
@@ -1559,39 +1610,42 @@ export default function ParentDashboard() {
               </div>
 
               {/* Adventurers Column */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-muted-foreground">Adventurers</h3>
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground">Adventurers</h3>
                 {children && children.length > 0 ? (
                   <div className="space-y-4">
                     {children.map((child) => (
                     <Card key={child.id} className="hover:shadow-lg transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <EditableProfile
-                            user={{
-                              id: child.id,
-                              name: child.name || "Unnamed Child",
-                              image: child.image,
-                              role: "CHILD",
-                              points: child.points,
-                            }}
-                            canEdit={true} // Parents can edit children's profiles
-                            onUpdate={() => {
-                              void utils.family.getChildren.invalidate();
-                              void utils.family.getMyFamily.invalidate();
-                            }}
-                          />
-                          <div className="flex items-center space-x-2">
+                      <CardContent className="p-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+                          <div className="flex-1 min-w-0">
+                            <EditableProfile
+                              user={{
+                                id: child.id,
+                                name: child.name || "Unnamed Child",
+                                image: child.image,
+                                role: "CHILD",
+                                points: child.points,
+                              }}
+                              canEdit={true} // Parents can edit children's profiles
+                              onUpdate={() => {
+                                void utils.family.getChildren.invalidate();
+                                void utils.family.getMyFamily.invalidate();
+                              }}
+                            />
+                          </div>
+                          <div className="flex flex-col xs:flex-row items-start xs:items-center space-y-1 xs:space-y-0 xs:space-x-2 sm:flex-shrink-0">
                             {child.email && (
-                              <Badge variant="outline">Has Email</Badge>
+                              <Badge variant="outline" className="text-xs px-1">Has Email</Badge>
                             )}
                             {child.permalink && (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => copyChildLink(child.permalink!)}
+                                className="text-xs h-7 w-full xs:w-auto px-2"
                               >
-                                <Copy className="w-4 h-4 mr-1" />
+                                <Copy className="w-3 h-3 mr-1" />
                                 Magic Link
                               </Button>
                             )}
