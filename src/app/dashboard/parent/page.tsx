@@ -49,7 +49,6 @@ export default function ParentDashboard() {
   const [questForm, setQuestForm] = useState({
     title: "",
     points: 1,
-    icon: "⭐",
     image: undefined as string | undefined,
     frequency: "daily" as "daily" | "weekly" | "monthly" | "once",
     weeklyDays: [] as number[],
@@ -81,7 +80,6 @@ export default function ParentDashboard() {
   const [editQuestForm, setEditQuestForm] = useState({
     title: "",
     points: 1,
-    icon: "⭐",
     image: undefined as string | undefined,
     frequency: "daily" as "daily" | "weekly" | "monthly" | "once",
     weeklyDays: [] as number[],
@@ -178,7 +176,7 @@ export default function ParentDashboard() {
       
       toast.success("🎯 Quest created successfully!");
       setIsAddingQuest(false);
-      setQuestForm({ title: "", points: 1, icon: "⭐", image: undefined, frequency: "daily", weeklyDays: [], monthlyDate: 1, assignedUserIds: [] });
+      setQuestForm({ title: "", points: 1, image: undefined, frequency: "daily", weeklyDays: [], monthlyDate: 1, assignedUserIds: [] });
       // Immediate cache invalidation
       void utils.quest.getAll.invalidate();
     },
@@ -211,7 +209,7 @@ export default function ParentDashboard() {
       toast.success("✏️ Quest updated successfully!");
       setIsEditingQuest(false);
       setEditingQuest(null);
-      setEditQuestForm({ title: "", points: 1, icon: "⭐", image: undefined, frequency: "daily", weeklyDays: [], monthlyDate: 1, assignedUserIds: [] });
+      setEditQuestForm({ title: "", points: 1, image: undefined, frequency: "daily", weeklyDays: [], monthlyDate: 1, assignedUserIds: [] });
       // Immediate cache invalidation
       void utils.quest.getAll.invalidate();
     },
@@ -374,7 +372,6 @@ export default function ParentDashboard() {
     setEditQuestForm({
       title: quest.title,
       points: quest.points,
-      icon: quest.icon || "⭐",
       image: undefined, // Reset image, will show current image in form
       frequency: quest.frequency,
       weeklyDays: quest.weeklyDays ? JSON.parse(quest.weeklyDays) : [],
@@ -751,26 +748,15 @@ export default function ParentDashboard() {
                       </div>
                     )}
                     
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="icon">Quest Icon</Label>
-                        <Input
-                          id="icon"
-                          placeholder="⭐"
-                          value={questForm.icon}
-                          onChange={(e) => setQuestForm({ ...questForm, icon: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 h-auto">
                         <Label>Quest Image</Label>
                         <ImageUpload
                           currentImage={undefined}
                           onImageChange={(imageData) => setQuestForm({ ...questForm, image: imageData })}
                           placeholder="Add quest image"
-                          className="h-20"
+                          className="h-full"
                         />
                       </div>
-                    </div>
                     
                     {/* Child Assignment */}
                     <div className="space-y-2">
@@ -855,14 +841,29 @@ export default function ParentDashboard() {
             </div>
 
             {/* Quests Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-10 gap-3">
               {quests?.map((quest) => (
-                <Card key={quest.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
+                <Card key={quest.id} className="hover:shadow-md transition-shadow py-1">
+                  <CardContent className="p-3">
+                    <div className="flex justify-between py-1">
+                    <span className="flex items-center space-x-1 text-muted-foreground">
+                        <Badge className="bg-gradient-to-r from-accent to-primary text-white">
+                          {quest.points} pts
+                        </Badge>
+                      </span>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleEditQuest(quest)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                    </div>
                     <div className="space-y-3">
                       {/* Quest Image */}
                       {quest.image && (
-                        <div className="w-full h-24 rounded-md overflow-hidden">
+                        <div className="w-full h-auto rounded-md overflow-hidden">
                           <img
                             src={quest.image}
                             alt={quest.title}
@@ -873,25 +874,13 @@ export default function ParentDashboard() {
                       
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <div className="text-lg">{quest.icon || "⭐"}</div>
                           <h3 className="font-medium text-sm truncate flex-1">{quest.title}</h3>
                         </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={() => handleEditQuest(quest)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
                       </div>
                       
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center space-x-2">
-                          <span className="flex items-center space-x-1 text-muted-foreground">
-                            <Star className="w-3 h-3" />
-                            <span>{quest.points}pts</span>
-                          </span>
+                          
                           <Badge variant="secondary" className="text-xs h-5">
                             {getFrequencyDetails(quest)}
                           </Badge>
@@ -1000,25 +989,14 @@ export default function ParentDashboard() {
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="editIcon">Quest Icon</Label>
-                      <Input
-                        id="editIcon"
-                        placeholder="⭐"
-                        value={editQuestForm.icon}
-                        onChange={(e) => setEditQuestForm({ ...editQuestForm, icon: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Quest Image</Label>
-                      <ImageUpload
-                        currentImage={editingQuest?.image || null}
-                        onImageChange={(imageData) => setEditQuestForm({ ...editQuestForm, image: imageData })}
-                        placeholder="Update quest image"
-                        className="h-20"
-                      />
-                    </div>
+                  <div className="space-y-2 h-auto">
+                    <Label>Quest Image</Label>
+                    <ImageUpload
+                      currentImage={editingQuest?.image || null}
+                      onImageChange={(imageData) => setEditQuestForm({ ...editQuestForm, image: imageData })}
+                      placeholder="Update quest image"
+                      className="h-full"
+                    />
                   </div>
                   
                   {/* Child Assignment for Edit */}
@@ -1240,10 +1218,25 @@ export default function ParentDashboard() {
               </Dialog>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-10 gap-3">
               {rewards?.map((reward) => (
-                <Card key={reward.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
+                <Card key={reward.id} className="hover:shadow-md transition-shadow py-1">
+                  <CardContent className="p-3">
+                    <div className="flex justify-between py-1">
+                      <span className="flex items-center space-x-1 text-muted-foreground">
+                        <Badge className="bg-gradient-to-r from-accent to-primary text-white">
+                          {reward.pointsCost} pts
+                        </Badge>
+                      </span>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleEditReward(reward)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                    </div>
                     <div className="space-y-3">
                       {/* Reward Image */}
                       {reward.image && (
@@ -1256,22 +1249,6 @@ export default function ParentDashboard() {
                         </div>
                       )}
                       
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold">{reward.title}</h3>
-                        <div className="flex items-center space-x-2">
-                          <Badge className="bg-gradient-to-r from-accent to-primary text-white">
-                            {reward.pointsCost} pts
-                          </Badge>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleEditReward(reward)}
-                            className="h-6 w-6 p-0"
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
                       {reward.description && (
                         <p className="text-sm text-muted-foreground">{reward.description}</p>
                       )}
@@ -1279,6 +1256,8 @@ export default function ParentDashboard() {
                         <span className="text-muted-foreground">
                           Redeemed {reward.redemptions.length} times
                         </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center space-x-1">
                           {reward.assignments.map((assignment: any) => (
                             <ProfileAvatar
@@ -1430,7 +1409,7 @@ export default function ParentDashboard() {
           {/* Family Tab */}
           <TabsContent value="family" className="space-y-6">
             {/* Header Section - Full Width */}
-            <div className="flex items-center justify-between">
+            <div className="flex justify-between items-center space-x-2">
               <h2 className="text-2xl font-bold">Family Members</h2>
               <div className="flex space-x-2">
                 <Dialog open={isAddingParent} onOpenChange={setIsAddingParent}>
@@ -1473,66 +1452,65 @@ export default function ParentDashboard() {
                       </div>
                     </form>
                   </DialogContent>
+                  </Dialog>
+                  
+                  <Dialog open={isAddingChild} onOpenChange={setIsAddingChild}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Child
+                      </Button>
+                    </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add New Adventurer</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAddChild} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Child's Name</Label>
+                        <Input
+                          id="name"
+                          placeholder="Alex"
+                          value={childForm.name}
+                          onChange={(e) => setChildForm({ ...childForm, name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email (Optional)</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="alex@family.com"
+                          value={childForm.email}
+                          onChange={(e) => setChildForm({ ...childForm, email: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          If provided, they can also login with Google
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsAddingChild(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={addChildMutation.isPending}
+                          className="bg-gradient-to-r from-primary to-accent text-white"
+                        >
+                          Add Adventurer
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
                 </Dialog>
-                
-                <Dialog open={isAddingChild} onOpenChange={setIsAddingChild}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Child
-                    </Button>
-                  </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Adventurer</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleAddChild} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Child's Name</Label>
-                      <Input
-                        id="name"
-                        placeholder="Alex"
-                        value={childForm.name}
-                        onChange={(e) => setChildForm({ ...childForm, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email (Optional)</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="alex@family.com"
-                        value={childForm.email}
-                        onChange={(e) => setChildForm({ ...childForm, email: e.target.value })}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        If provided, they can also login with Google
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsAddingChild(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={addChildMutation.isPending}
-                        className="bg-gradient-to-r from-primary to-accent text-white"
-                      >
-                        Add Adventurer
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              </div>
             </div>
-            
-            {/* Two Column Layout for Family Members */}
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-2 gap-3">
               {/* Quest Masters Column */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-muted-foreground">Quest Masters</h3>
@@ -1631,20 +1609,19 @@ export default function ParentDashboard() {
                   </Card>
                 )}
               </div>
-            </div>
 
-            {/* Empty state */}
-            {(!children || children.length === 0) && (!family?.members || family.members.filter(m => m.role === "PARENT").length <= 1) && (
-              <Card className="text-center py-12">
-                <CardContent>
-                  <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Build Your Quest Team</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Add parents to help manage quests and children for epic adventures!
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+              {/* Empty state */}
+              {(!children || children.length === 0) && (!family?.members || family.members.filter(m => m.role === "PARENT").length <= 1) && (
+                <Card className="text-center py-12">
+                  <CardContent>
+                    <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">Build Your Quest Team</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Add parents to help manage quests and children for epic adventures!
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
         </Tabs>

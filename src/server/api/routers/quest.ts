@@ -35,7 +35,6 @@ export const questRouter = createTRPCRouter({
         data: {
           title: input.title,
           points: input.points,
-          icon: input.icon,
           image: input.image,
           frequency: input.frequency,
           weeklyDays: input.weeklyDays ? JSON.stringify(input.weeklyDays) : null,

@@ -434,7 +434,7 @@ export default function ChildDashboard() {
           {availableQuests.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-muted-foreground">Ready for Adventure</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
                 {availableQuests.map((quest) => (
                   <Card 
                     key={quest.id}
@@ -443,7 +443,7 @@ export default function ChildDashboard() {
                     <CardHeader className="pb-3">
                       {/* Quest Image */}
                       {quest.image ? (
-                        <div className="w-full h-32 rounded-md overflow-hidden mb-3">
+                        <div className="w-full h-auto rounded-md overflow-hidden mb-3">
                           <img
                             src={quest.image}
                             alt={quest.title}
