@@ -28,6 +28,7 @@ model User {
   image         String? // Profile photo URL from Vercel Blob
   role          UserRole  @default(CHILD)
   points        Int       @default(0)
+  totalPoints   Int       @default(0)
   permalink     String?   @unique // For child login
   familyId      String?
   family        Family?   @relation(fields: [familyId], references: [id])

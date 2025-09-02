@@ -198,9 +198,10 @@ export const userRouter = createTRPCRouter({
         name: true,
         image: true,
         points: true,
+        totalPoints: true,
       },
       orderBy: {
-        points: "desc",
+        totalPoints: "desc",
       },
     });
   }),

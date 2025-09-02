@@ -436,7 +436,7 @@ export default function ChildDashboard() {
           {availableQuests.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-muted-foreground">Ready for Adventure</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {availableQuests.map((quest) => (
                   <Card 
                     key={quest.id}
@@ -493,7 +493,7 @@ export default function ChildDashboard() {
           {completedQuests.length > 0 && (
             <div className="space-y-4 mt-8">
               <h3 className="text-lg font-semibold text-muted-foreground">Waiting for Review</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {completedQuests.map((quest) => (
                   <Card 
                     key={quest.id}
@@ -519,7 +519,7 @@ export default function ChildDashboard() {
           {rejectedQuests.length > 0 && (
             <div className="space-y-4 mt-8">
               <h3 className="text-lg font-semibold text-red-600">Needs Another Try 🔄</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {rejectedQuests.map((quest) => (
                   <Card 
                     key={quest.id}
@@ -614,7 +614,7 @@ export default function ChildDashboard() {
             {availableRewards.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-green-600">Available Now! 🎁</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {availableRewards.slice(0, 3).map((reward) => (
                     <Card 
                       key={reward.id}
@@ -659,7 +659,7 @@ export default function ChildDashboard() {
             {expensiveRewards.length > 0 && (
               <div className="space-y-3 mt-6">
                 <h3 className="text-lg font-semibold text-muted-foreground">Coming Soon... 🎯</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {expensiveRewards.slice(0, 3).map((reward) => {
                     const progress = userProfile ? (userProfile.points / reward.pointsCost) * 100 : 0;
                     const pointsNeeded = reward.pointsCost - (userProfile?.points || 0);
@@ -672,7 +672,7 @@ export default function ChildDashboard() {
                         <CardContent className="p-4">
                           {/* Reward Image */}
                           {reward.image && (
-                            <div className="w-full h-24 rounded-md overflow-hidden mb-3 opacity-50">
+                            <div className="w-full h-auto rounded-md overflow-hidden mb-3 opacity-50">
                               <img
                                 src={reward.image}
                                 alt={reward.title}
@@ -744,7 +744,7 @@ export default function ChildDashboard() {
                       </div>
                       <div className="flex items-center space-x-1">
                         <Star className="w-4 h-4 text-accent" />
-                        <span className="font-bold">{member.points}</span>
+                        <span className="font-bold">{member.totalPoints}</span>
                       </div>
                     </div>
                   ))}

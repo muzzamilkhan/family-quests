@@ -12,7 +12,6 @@ export function useRealtimeUpdates() {
     const pollInterval = setInterval(() => {
       // Invalidate key queries that need real-time updates
       void utils.quest.getMyQuests.invalidate();
-      void utils.quest.getPendingCompletions.invalidate();
       void utils.user.getProfile.invalidate();
       void utils.user.getPointsLeaderboard.invalidate();
       void utils.quest.getAll.invalidate();
@@ -27,7 +26,6 @@ export function useRealtimeUpdates() {
   const invalidateQuests = () => {
     void utils.quest.getMyQuests.invalidate();
     void utils.quest.getAll.invalidate();
-    void utils.quest.getPendingCompletions.invalidate();
   };
 
   const invalidateUserData = () => {

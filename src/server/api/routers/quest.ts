@@ -430,6 +430,9 @@ export const questRouter = createTRPCRouter({
             points: {
               increment: completion.quest.points,
             },
+            totalPoints: {
+              increment: completion.quest.points,
+            },
           },
         }),
       ]);
