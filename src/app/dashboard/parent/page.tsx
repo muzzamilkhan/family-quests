@@ -684,7 +684,7 @@ export default function ParentDashboard() {
                     Create Quest
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md max-h-[95vh] overflow-y-auto mx-2 sm:mx-auto w-full">
+                <DialogContent className="max-w-md max-h-[95vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full mx-auto">
                   <DialogHeader className="pb-2">
                     <DialogTitle className="text-base">Create New Quest</DialogTitle>
                   </DialogHeader>
@@ -928,7 +928,7 @@ export default function ParentDashboard() {
 
             {/* Edit Quest Dialog */}
             <Dialog open={isEditingQuest} onOpenChange={setIsEditingQuest}>
-              <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto pb-4 mx-2 sm:mx-auto">
+              <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto pb-4 w-[calc(100vw-1rem)] sm:w-full mx-auto">
                 <DialogHeader className="pb-2">
                   <DialogTitle className="text-base">Edit Quest</DialogTitle>
                 </DialogHeader>
@@ -1118,7 +1118,7 @@ export default function ParentDashboard() {
                     Add Reward
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto mx-2 sm:mx-auto">
+                <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full mx-auto">
                   <DialogHeader className="pb-2">
                     <DialogTitle className="text-base">Add New Reward</DialogTitle>
                   </DialogHeader>
@@ -1321,7 +1321,7 @@ export default function ParentDashboard() {
 
             {/* Edit Reward Dialog */}
             <Dialog open={isEditingReward} onOpenChange={setIsEditingReward}>
-              <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto pb-4 mx-2 sm:mx-auto">
+              <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto pb-4 w-[calc(100vw-1rem)] sm:w-full mx-auto">
                 <DialogHeader className="pb-2">
                   <DialogTitle className="text-base">Edit Reward</DialogTitle>
                 </DialogHeader>
