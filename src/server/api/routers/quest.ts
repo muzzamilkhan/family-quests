@@ -272,7 +272,7 @@ export const questRouter = createTRPCRouter({
         },
       });
 
-      if (existingCompletion) {
+      if (existingCompletion && existingCompletion.status !== "rejected") {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Quest already completed today",

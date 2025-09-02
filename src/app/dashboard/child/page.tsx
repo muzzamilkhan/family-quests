@@ -26,7 +26,7 @@ import { PointsCounter } from "~/components/points-counter";
 import { useRealtimeUpdates, useRealtimeMyQuests, useRealtimeProfile, useRealtimeLeaderboard } from "~/hooks/use-realtime-updates";
 
 // Quest completion status types
-type QuestStatus = "available" | "completed" | "approved" | "treasure";
+type QuestStatus = "available" | "completed" | "approved" | "treasure" | "rejected";
 
 interface QuestWithStatus {
   id: string;
@@ -216,7 +216,7 @@ export default function ChildDashboard() {
     }
 
     if (latestCompletion.status === "rejected") {
-      // Rejected - can try again
+      // Rejected - show as rejected with retry option
       return {
         id: quest.id,
         title: quest.title,
@@ -224,7 +224,8 @@ export default function ChildDashboard() {
         icon: quest.icon,
         image: quest.image,
         frequency: quest.frequency,
-        status: "available" as const,
+        status: "rejected" as const,
+        completionId: latestCompletion.id,
       };
     }
 
@@ -278,6 +279,7 @@ export default function ChildDashboard() {
   const completedQuests = questsWithStatus.filter(q => q.status === "completed");
   const collectedQuests = questsWithStatus.filter(q => q.status === "approved"); // These are collected/done
   const availableQuests = questsWithStatus.filter(q => q.status === "available");
+  const rejectedQuests = questsWithStatus.filter(q => q.status === "rejected");
 
   // Progress calculation: only count approved and collected quests (not pending approval)
   // - "treasure" = approved by parent, ready to collect 
@@ -506,6 +508,68 @@ export default function ChildDashboard() {
                           <span className="text-sm text-amber-700">Awaiting approval</span>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rejected Quests */}
+          {rejectedQuests.length > 0 && (
+            <div className="space-y-4 mt-8">
+              <h3 className="text-lg font-semibold text-red-600">Needs Another Try 🔄</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {rejectedQuests.map((quest) => (
+                  <Card 
+                    key={quest.id}
+                    className="border-2 border-red-200 bg-red-50/50"
+                  >
+                    <CardHeader className="pb-3">
+                      {/* Quest Image */}
+                      {quest.image ? (
+                        <div className="w-full h-auto rounded-md overflow-hidden mb-3 opacity-75">
+                          <img
+                            src={quest.image}
+                            alt={quest.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : null}
+                      <div className="flex items-center justify-between">
+                        <div className="text-3xl opacity-75">{quest.icon || "⭐"}</div>
+                        <Badge variant="outline" className="border-red-300 text-red-700">+{quest.points} pts</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">{quest.title}</h3>
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Badge variant="secondary">{quest.frequency}</Badge>
+                          <Badge className="bg-red-100 text-red-800 border border-red-300">
+                            Needs Retry
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        onClick={() => handleCompleteQuest(quest.id)}
+                        disabled={completingQuest === quest.id}
+                        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold"
+                        size="lg"
+                      >
+                        {completingQuest === quest.id ? (
+                          <div className="flex items-center space-x-2">
+                            <Sparkles className="w-4 h-4 animate-spin" />
+                            <span>Trying Again...</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Try Again</span>
+                          </div>
+                        )}
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
