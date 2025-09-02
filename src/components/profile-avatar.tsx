@@ -18,6 +18,7 @@ interface ProfileAvatarProps {
   size?: "sm" | "md" | "lg"
   showRole?: boolean
   showPoints?: boolean
+  showName?: boolean
   className?: string
 }
 
@@ -28,6 +29,7 @@ export function ProfileAvatar({
   size = "md",
   showRole = false,
   showPoints = false,
+  showName = false,
   className,
 }: ProfileAvatarProps) {
   // Support both user object and individual props
@@ -72,15 +74,19 @@ export function ProfileAvatar({
         )}
       </div>
 
-      <div className="text-center">
-        <div className="font-heading font-medium text-sm text-balance">{displayName}</div>
+      { (!showName && !showPoints) && (
+        <div className="text-center">
+          { showName && (
+            <div className="font-heading font-medium text-sm text-balance">{displayName}</div>
+          )}
 
-        {showPoints && displayPoints !== undefined && (
-          <Badge variant="secondary" className="text-xs mt-1">
-            {displayPoints} pts
-          </Badge>
-        )}
-      </div>
+          {showPoints && displayPoints !== undefined && (
+            <Badge variant="secondary" className="text-xs mt-1">
+              {displayPoints} pts
+            </Badge>
+          )}
+        </div>
+      )}
     </div>
   )
 }
