@@ -155,7 +155,7 @@ export function EditableProfile({ user, canEdit, onUpdate }: EditableProfileProp
             <button
               onClick={handleImageClick}
               disabled={isUploadingImage}
-              className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 border-2 border-background shadow-sm"
+              className="absolute bottom-0.5 right-0.5 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 border-2 border-background shadow-sm"
             >
               {isUploadingImage ? (
                 <div className="w-3 h-3 border border-primary-foreground border-t-transparent rounded-full animate-spin" />

@@ -669,6 +669,7 @@ export default function ChildDashboard() {
                           src={member.image ?? undefined}
                           name={member.name || "Adventurer"}
                           size="sm"
+                          className="gap-0"
                         />
                         <span className={`font-semibold ${member.id === userProfile.id ? 'text-primary' : ''}`}>
                           {member.name}
