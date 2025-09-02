@@ -686,7 +686,7 @@ export default function ParentDashboard() {
                           type="number"
                           min="1"
                           value={questForm.points}
-                          onChange={(e) => setQuestForm({ ...questForm, points: parseInt(e.target.value) })}
+                          onChange={(e) => setQuestForm({ ...questForm, points: parseInt(e.target.value) || 1 })}
                         />
                       </div>
                       <div className="space-y-2">
@@ -742,8 +742,8 @@ export default function ParentDashboard() {
                           type="number"
                           min="1"
                           max="31"
-                          value={questForm.monthlyDate}
-                          onChange={(e) => setQuestForm({ ...questForm, monthlyDate: parseInt(e.target.value) })}
+                          value={questForm.monthlyDate || ''}
+                          onChange={(e) => setQuestForm({ ...questForm, monthlyDate: parseInt(e.target.value) || 1 })}
                         />
                       </div>
                     )}
@@ -841,7 +841,7 @@ export default function ParentDashboard() {
             </div>
 
             {/* Quests Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-10 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {quests?.map((quest) => (
                 <Card key={quest.id} className="hover:shadow-md transition-shadow py-1">
                   <CardContent className="p-3">
@@ -872,10 +872,8 @@ export default function ParentDashboard() {
                         </div>
                       )}
                       
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-sm truncate flex-1">{quest.title}</h3>
-                        </div>
+                      <div className="w-full">
+                        <h3 className="font-medium text-sm leading-tight min-h-[2.5rem] flex items-center">{quest.title}</h3>
                       </div>
                       
                       <div className="flex items-center justify-between text-xs">
@@ -927,7 +925,7 @@ export default function ParentDashboard() {
                         type="number"
                         min="1"
                         value={editQuestForm.points}
-                        onChange={(e) => setEditQuestForm({ ...editQuestForm, points: parseInt(e.target.value) })}
+                        onChange={(e) => setEditQuestForm({ ...editQuestForm, points: parseInt(e.target.value) || 1 })}
                       />
                     </div>
                     <div className="space-y-2">
@@ -983,8 +981,8 @@ export default function ParentDashboard() {
                         type="number"
                         min="1"
                         max="31"
-                        value={editQuestForm.monthlyDate}
-                        onChange={(e) => setEditQuestForm({ ...editQuestForm, monthlyDate: parseInt(e.target.value) })}
+                        value={editQuestForm.monthlyDate || ''}
+                        onChange={(e) => setEditQuestForm({ ...editQuestForm, monthlyDate: parseInt(e.target.value) || 1 })}
                       />
                     </div>
                   )}
@@ -1131,7 +1129,7 @@ export default function ParentDashboard() {
                         type="number"
                         min="1"
                         value={rewardForm.pointsCost}
-                        onChange={(e) => setRewardForm({ ...rewardForm, pointsCost: parseInt(e.target.value) })}
+                        onChange={(e) => setRewardForm({ ...rewardForm, pointsCost: parseInt(e.target.value) || 1 })}
                         required
                       />
                     </div>
@@ -1218,7 +1216,7 @@ export default function ParentDashboard() {
               </Dialog>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-10 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {rewards?.map((reward) => (
                 <Card key={reward.id} className="hover:shadow-md transition-shadow py-1">
                   <CardContent className="p-3">
@@ -1237,6 +1235,9 @@ export default function ParentDashboard() {
                         <Edit className="w-3 h-3" />
                       </Button>
                     </div>
+                    {reward.title && (
+                        <p className="text-m">{reward.title}</p>
+                      )}
                     <div className="space-y-3">
                       {/* Reward Image */}
                       {reward.image && (
@@ -1319,7 +1320,7 @@ export default function ParentDashboard() {
                       type="number"
                       min="1"
                       value={editRewardForm.pointsCost}
-                      onChange={(e) => setEditRewardForm({ ...editRewardForm, pointsCost: parseInt(e.target.value) })}
+                      onChange={(e) => setEditRewardForm({ ...editRewardForm, pointsCost: parseInt(e.target.value) || 1 })}
                       required
                     />
                   </div>

@@ -511,20 +511,33 @@ export const questRouter = createTRPCRouter({
         });
       }
 
-      const rejectedCompletion = await ctx.db.questCompletion.update({
-        where: { id: input.completionId },
-        data: {
-          status: "rejected",
-        },
-        include: {
-          quest: {
-            include: {
-              family: true,
+      const [rejectedCompletion] = await Promise.all([
+        ctx.db.questCompletion.update({
+          where: { id: input.completionId },
+          data: {
+            status: "rejected",
+          },
+          include: {
+            quest: {
+              include: {
+                family: true,
+              },
+            },
+            user: true,
+          },
+        }),
+        ctx.db.user.update({
+          where: { 
+            id: completion.user.id,
+            points: { gt: 0 }, // Only deduct if points > 0
+          },
+          data: {
+            points: {
+              decrement: 1,
             },
           },
-          user: true,
-        },
-      });
+        }),
+      ]);
 
       // Emit real-time event for quest rejection
       emitFamilyEvent({
@@ -536,6 +549,23 @@ export const questRouter = createTRPCRouter({
         questTitle: rejectedCompletion.quest.title,
         completionId: rejectedCompletion.id,
       });
+
+      // Emit points update event for rejection penalty
+      const updatedUser = await ctx.db.user.findUnique({
+        where: { id: completion.user.id },
+        select: { points: true, name: true, familyId: true },
+      });
+
+      if (updatedUser?.familyId) {
+        emitFamilyEvent({
+          type: EVENT_TYPES.POINTS_UPDATED,
+          familyId: updatedUser.familyId,
+          userId: completion.user.id,
+          userName: updatedUser.name || "Unknown",
+          newPoints: updatedUser.points,
+          pointsChange: -1, // Deducted 1 point
+        });
+      }
 
       return rejectedCompletion;
     }),
