@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Progress } from "~/components/ui/progress";
-import { ProtectedRoute } from "~/components/protected-route";
 import {
   Sparkles,
   Star,
@@ -40,7 +39,7 @@ interface QuestWithStatus {
   completionId?: string;
 }
 
-function ChildDashboardContent() {
+export default function ChildDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [completingQuest, setCompletingQuest] = useState<string | null>(null);
@@ -287,7 +286,7 @@ function ChildDashboardContent() {
   const progressPercentage = totalQuests > 0 ? (approvedQuests / totalQuests) * 100 : 0;
 
 
-  return (
+  return (<>
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background p-4">
       {/* Header */}
       <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -322,7 +321,7 @@ function ChildDashboardContent() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => router.push("/child/treasury")}
+              onClick={() => router.push("/dashboard/treasury")}
               className="h-full border-accent text-accent hover:bg-accent hover:text-white"
             >
               <Gift className="w-4 h-4 mr-2" />
@@ -601,7 +600,7 @@ function ChildDashboardContent() {
               </div>
               <Button 
                 variant="outline" 
-                onClick={() => router.push("/child/treasury")}
+                onClick={() => router.push("/dashboard/treasury")}
                 className="border-primary text-primary hover:bg-primary hover:text-white"
               >
                 View All Rewards
@@ -753,13 +752,6 @@ function ChildDashboardContent() {
         )}
       </div>
     </div>
-  );
-}
-
-export default function ChildDashboard() {
-  return (
-    <ProtectedRoute requiredRole="CHILD">
-      <ChildDashboardContent />
-    </ProtectedRoute>
+    </>
   );
 }

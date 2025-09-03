@@ -8,6 +8,7 @@ import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Progress } from "~/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { ProtectedRoute } from "~/components/protected-route";
 import {
   ArrowLeft,
   Gift,
@@ -23,7 +24,7 @@ import { toast } from "sonner";
 import { ProfileAvatar } from "~/components/profile-avatar";
 import { PointsCounter } from "~/components/points-counter";
 
-export default function TreasuryPage() {
+function TreasuryPageContent() {
   const { data: session } = useSession();
   const router = useRouter();
   const [redeeming, setRedeeming] = useState<string | null>(null);
@@ -426,5 +427,13 @@ export default function TreasuryPage() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+export default function TreasuryPage() {
+  return (
+    <ProtectedRoute requiredRole="CHILD">
+      <TreasuryPageContent />
+    </ProtectedRoute>
   );
 }

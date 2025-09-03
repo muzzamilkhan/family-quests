@@ -11,6 +11,7 @@ import { Badge } from "~/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { ProtectedRoute } from "~/components/protected-route";
 import {
   Plus,
   Settings,
@@ -37,7 +38,7 @@ import { EditableProfile } from "~/components/editable-profile";
 import { ImageUpload } from "~/components/image-upload";
 import { useRealtimeUpdates, useRealtimePendingCompletions, useRealtimeLeaderboard } from "~/hooks/use-realtime-updates";
 
-export default function ParentDashboard() {
+function ParentDashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isAddingQuest, setIsAddingQuest] = useState(false);
@@ -1880,5 +1881,13 @@ export default function ParentDashboard() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+export default function ParentDashboard() {
+  return (
+    <ProtectedRoute requiredRole="PARENT">
+      <ParentDashboardContent />
+    </ProtectedRoute>
   );
 }
