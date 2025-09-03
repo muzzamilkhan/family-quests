@@ -36,12 +36,12 @@ export default function ChildLoginPage() {
     try {
       const result = await signIn("permalink", {
         permalink: permalink,
-        callbackUrl: "/dashboard/child",
+        callbackUrl: "/child",
         redirect: false,
       });
 
       if (result?.ok) {
-        router.push("/dashboard/child");
+        router.push("/child");
       } else {
         toast.error("Login failed. Please try again.");
       }
@@ -56,7 +56,7 @@ export default function ChildLoginPage() {
     setIsLoggingIn(true);
     try {
       await signIn("google", { 
-        callbackUrl: "/dashboard/child",
+        callbackUrl: "/child",
         // Pass child email to pre-fill or hint
         ...(child?.email && { login_hint: child.email })
       });

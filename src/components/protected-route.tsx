@@ -29,8 +29,8 @@ export function ProtectedRoute({
 
     if (requiredRole && session.user.role !== requiredRole) {
       const defaultRedirect = session.user.role === "PARENT" 
-        ? "/dashboard/parent" 
-        : "/dashboard/child";
+        ? "/parent" 
+        : "/child";
       router.push(defaultRedirect);
       return;
     }

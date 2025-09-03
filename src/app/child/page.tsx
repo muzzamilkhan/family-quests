@@ -321,7 +321,7 @@ export default function ChildDashboard() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => router.push("/dashboard/treasury")}
+              onClick={() => router.push("/child/treasury")}
               className="h-full border-accent text-accent hover:bg-accent hover:text-white"
             >
               <Gift className="w-4 h-4 mr-2" />
@@ -600,7 +600,7 @@ export default function ChildDashboard() {
               </div>
               <Button 
                 variant="outline" 
-                onClick={() => router.push("/dashboard/treasury")}
+                onClick={() => router.push("/child/treasury")}
                 className="border-primary text-primary hover:bg-primary hover:text-white"
               >
                 View All Rewards

@@ -26,7 +26,7 @@ export default function OnboardingPage() {
   const createFamilyMutation = api.family.create.useMutation({
     onSuccess: () => {
       toast.success("🎉 Your family adventure has begun!");
-      router.push("/dashboard/parent");
+      router.push("/parent");
     },
     onError: (error) => {
       toast.error(`Failed to create family: ${error.message}`);

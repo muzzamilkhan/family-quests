@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Also set the callback URL cookie to complete the flow
-    response.cookies.set("next-auth.callback-url", "http://localhost:3000/dashboard/child", {
+    response.cookies.set("next-auth.callback-url", "http://localhost:3000/child", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", 
       sameSite: "lax",

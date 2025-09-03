@@ -280,7 +280,7 @@ export default function TreasuryPage() {
                   </p>
                   <Button 
                     variant="outline"
-                    onClick={() => router.push("/dashboard/child")}
+                    onClick={() => router.push("/child")}
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Quests
@@ -414,7 +414,7 @@ export default function TreasuryPage() {
                   </p>
                   <Button 
                     variant="outline"
-                    onClick={() => router.push("/dashboard/child")}
+                    onClick={() => router.push("/child")}
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Quests

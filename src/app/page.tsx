@@ -24,9 +24,9 @@ export default function HomePage() {
       if (userProfile.family) {
         // User has a family, redirect to appropriate dashboard
         if (userProfile.role === "PARENT") {
-          router.push("/dashboard/parent");
+          router.push("/parent");
         } else {
-          router.push("/dashboard/child");
+          router.push("/child");
         }
       } else if (userProfile.role === "PARENT") {
         // Parent without family, redirect to onboarding
