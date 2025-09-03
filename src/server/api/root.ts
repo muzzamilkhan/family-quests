@@ -4,6 +4,7 @@ import { familyRouter } from "./routers/family";
 import { rewardRouter } from "./routers/reward";
 import { userRouter } from "./routers/user";
 import { realtimeRouter } from "./routers/realtime";
+import { templateRequestRouter } from "./routers/templateRequest";
 
 /**
  * This is the primary router for your server.
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   reward: rewardRouter,
   user: userRouter,
   realtime: realtimeRouter,
+  templateRequest: templateRequestRouter,
 });
 
 // export type definition of API

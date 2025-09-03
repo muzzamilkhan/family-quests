@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
 import { Badge } from "~/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
@@ -52,6 +53,8 @@ function ParentDashboardContent() {
   const [editingReward, setEditingReward] = useState<any>(null);
   const [isQuestTemplateOpen, setIsQuestTemplateOpen] = useState(false);
   const [isRewardTemplateOpen, setIsRewardTemplateOpen] = useState(false);
+  const [isRequestingTemplate, setIsRequestingTemplate] = useState(false);
+  const [currentTab, setCurrentTab] = useState("overview");
   const [selectedQuestTemplates, setSelectedQuestTemplates] = useState<any[]>([]);
   const [selectedRewardTemplates, setSelectedRewardTemplates] = useState<any[]>([]);
   const [questToDelete, setQuestToDelete] = useState<any>(null);
@@ -102,6 +105,11 @@ function ParentDashboardContent() {
     image: undefined as string | undefined,
     pointsCost: 10,
     assignedUserIds: [] as string[],
+  });
+
+  // Request template form state
+  const [requestForm, setRequestForm] = useState({
+    request: "",
   });
 
   // Multi-select state for quest completions
@@ -438,6 +446,15 @@ function ParentDashboardContent() {
     onError: (error) => toast.error(error.message),
   });
 
+  const createTemplateRequestMutation = api.templateRequest.create.useMutation({
+    onSuccess: () => {
+      toast.success("📝 Template request submitted!");
+      setIsRequestingTemplate(false);
+      setRequestForm({ request: "" });
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   // Event handlers
   const handleCreateQuest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -543,6 +560,15 @@ function ParentDashboardContent() {
     await deleteRewardMutation.mutateAsync({ id: rewardToDelete.id });
   };
 
+  const handleRequestTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const type = currentTab === "quests" ? "QUEST" : "REWARD";
+    await createTemplateRequestMutation.mutateAsync({
+      type,
+      request: requestForm.request,
+    });
+  };
+
 
   // Always render the same structure to avoid hydration mismatch
   const isLoading = status === "loading" || !session || !family;
@@ -585,7 +611,48 @@ function ParentDashboardContent() {
 
       {/* Main Content */}
       <div className="container mx-auto p-2 space-y-3">
-        <Tabs defaultValue="overview" className="space-y-3">
+        {/* Request Template Dialog - Shared between Quests and Treasury tabs */}
+        <Dialog open={isRequestingTemplate} onOpenChange={setIsRequestingTemplate}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base">
+                Request New {currentTab === "quests" ? "Quest" : "Reward"} Template
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleRequestTemplate} className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="request" className="text-xs font-medium">Request Description</Label>
+                <Textarea
+                  id="request"
+                  placeholder={`Describe the ${currentTab === "quests" ? "quest" : "reward"} template you'd like to see...`}
+                  value={requestForm.request}
+                  onChange={(e) => setRequestForm({ ...requestForm, request: e.target.value })}
+                  required
+                  className="h-24 text-sm resize-none"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsRequestingTemplate(false)}
+                  className="h-8 text-xs px-3 flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createTemplateRequestMutation.isPending}
+                  className="bg-gradient-to-r from-accent to-primary text-white h-8 text-xs px-3 flex-1"
+                >
+                  {createTemplateRequestMutation.isPending ? "Submitting..." : "Submit Request"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-3">
           <TabsList className="grid w-full grid-cols-4 h-9">
             <TabsTrigger value="overview" className="flex items-center space-x-1 text-xs px-1">
               <Sparkles className="w-3 h-3" />
@@ -841,6 +908,14 @@ function ParentDashboardContent() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
               <h2 className="text-lg font-bold">Quest Board</h2>
               <div className="flex space-x-2">
+                <Dialog open={isRequestingTemplate} onOpenChange={setIsRequestingTemplate}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white text-xs h-8">
+                      <Plus className="w-3 h-3 mr-1" />
+                      Request Template
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
                 <Dialog open={isQuestTemplateOpen} onOpenChange={setIsQuestTemplateOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white text-xs h-8">
@@ -1291,10 +1366,17 @@ function ParentDashboardContent() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
               <h2 className="text-lg font-bold">Treasury</h2>
               <div className="flex space-x-2">
-                <Dialog open={isRewardTemplateOpen} onOpenChange={setIsRewardTemplateOpen}>
+                <Dialog open={isRequestingTemplate} onOpenChange={setIsRequestingTemplate}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white text-xs h-8">
-                      <FileText className="w-3 h-3 mr-1" />
+                      <Plus className="w-3 h-3 mr-1" />
+                      Request Template
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+                <Dialog open={isRewardTemplateOpen} onOpenChange={setIsRewardTemplateOpen}>
+                  <DialogTrigger asChild>
+                  <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white text-xs h-8">                      <FileText className="w-3 h-3 mr-1" />
                       Templates
                     </Button>
                   </DialogTrigger>
