@@ -290,7 +290,7 @@ function ChildDashboardContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background p-4">
       {/* Header */}
-      <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="h-auto bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-20 items-center justify-between px-6">
           <div className="flex items-center space-x-10">
             <EditableProfile

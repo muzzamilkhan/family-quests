@@ -36,9 +36,17 @@ function TreasuryPageContent() {
   }
 
   // API queries
-  const { data: userProfile } = api.user.getProfile.useQuery();
+  const { data: userProfile, refetch: refetchProfile } = api.user.getProfile.useQuery();
   const { data: rewards } = api.reward.getAll.useQuery();
-  const { data: myRedemptions } = api.reward.getMyRedemptions.useQuery();
+  const { data: myRedemptions, refetch: refetchRedemptions } = api.reward.getMyRedemptions.useQuery(
+    undefined,
+    {
+      refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+      refetchOnWindowFocus: true,
+    }
+  );
+
+  const utils = api.useUtils();
 
   // Mutations
   const redeemRewardMutation = api.reward.redeem.useMutation({
@@ -46,6 +54,11 @@ function TreasuryPageContent() {
       toast.success(`🏆 ${data.reward.title} redeemed successfully!`);
       toast.info("Ask your Quest Master to fulfill your reward! 🎁");
       setRedeeming(null);
+      // Immediate cache invalidation and refetch for instant UI update
+      void utils.user.getProfile.invalidate();
+      void utils.reward.getMyRedemptions.invalidate();
+      void refetchProfile();
+      void refetchRedemptions();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -78,10 +91,10 @@ function TreasuryPageContent() {
   const fulfilledRedemptions = myRedemptions?.filter(redemption => redemption.fulfilledAt) || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background">
+    <div className="min-h-screen p-4 bg-gradient-to-br from-background via-secondary/30 to-background">
       {/* Header */}
-      <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-20 items-center justify-between px-6">
+      <div className="h-auto bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-full items-center justify-between px-6">
           <div className="flex items-center space-x-4">
             <Button
               variant="ghost"
@@ -163,40 +176,41 @@ function TreasuryPageContent() {
                   {availableRewards.map((reward) => (
                     <Card 
                       key={reward.id}
-                      className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 hover:shadow-xl hover:scale-105 transition-all duration-300"
+                      className="border-2 border-green-200 bg-green-50/50 hover:shadow-lg transition-shadow"
                     >
-                      <CardHeader className="text-center pb-3">
-                        <div className="text-4xl mb-2">🎁</div>
-                        <h3 className="text-xl font-bold text-green-800">{reward.title}</h3>
-                        {reward.description && (
-                          <p className="text-sm text-green-600/80">{reward.description}</p>
+                      <CardContent className="p-4">
+                        {/* Reward Image */}
+                        {reward.image && (
+                          <div className="w-full h-24 rounded-md overflow-hidden mb-3">
+                            <img
+                              src={reward.image}
+                              alt={reward.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                         )}
-                      </CardHeader>
-                      
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center justify-center">
-                          <Badge className="bg-green-600 text-white text-lg px-4 py-2">
-                            <Star className="w-4 h-4 mr-1" />
-                            {reward.pointsCost} Points
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold">{reward.title}</h3>
+                          <Badge className="bg-green-600 text-white">
+                            {reward.pointsCost} pts
                           </Badge>
                         </div>
-                        
+                        {reward.description && (
+                          <p className="text-sm text-muted-foreground mb-3">{reward.description}</p>
+                        )}
                         <Button
                           onClick={() => handleRedeemReward(reward.id)}
                           disabled={redeeming === reward.id}
-                          className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold text-lg py-6"
-                          size="lg"
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          size="sm"
                         >
                           {redeeming === reward.id ? (
                             <div className="flex items-center space-x-2">
-                              <Sparkles className="w-5 h-5 animate-spin" />
+                              <Sparkles className="w-4 h-4 animate-spin" />
                               <span>Redeeming...</span>
                             </div>
                           ) : (
-                            <div className="flex items-center space-x-2">
-                              <Gift className="w-5 h-5" />
-                              <span>Redeem Now!</span>
-                            </div>
+                            "Redeem Now"
                           )}
                         </Button>
                       </CardContent>
@@ -229,37 +243,32 @@ function TreasuryPageContent() {
                     return (
                       <Card 
                         key={reward.id}
-                        className="border-2 border-dashed border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 hover:shadow-lg transition-shadow"
+                        className="border-2 border-dashed border-muted-foreground/30"
                       >
-                        <CardHeader className="text-center pb-3">
-                          <div className="text-4xl mb-2 opacity-60">🏆</div>
-                          <h3 className="text-xl font-bold text-amber-800">{reward.title}</h3>
-                          {reward.description && (
-                            <p className="text-sm text-amber-600/80">{reward.description}</p>
+                        <CardContent className="p-4">
+                          {/* Reward Image */}
+                          {reward.image && (
+                            <div className="w-full h-24 rounded-md overflow-hidden mb-3 opacity-50">
+                              <img
+                                src={reward.image}
+                                alt={reward.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
                           )}
-                        </CardHeader>
-                        
-                        <CardContent className="space-y-4">
-                          <div className="flex items-center justify-center">
-                            <Badge variant="outline" className="text-lg px-4 py-2 border-amber-300 text-amber-700">
-                              <Star className="w-4 h-4 mr-1" />
-                              {reward.pointsCost} Points
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold text-muted-foreground">{reward.title}</h3>
+                            <Badge variant="outline">
+                              {reward.pointsCost} pts
                             </Badge>
                           </div>
-                          
+                          {reward.description && (
+                            <p className="text-sm text-muted-foreground mb-3">{reward.description}</p>
+                          )}
                           <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Progress</span>
-                              <span className="font-medium text-amber-700">
-                                {userProfile.points}/{reward.pointsCost}
-                              </span>
-                            </div>
-                            <Progress 
-                              value={Math.min(progress, 100)} 
-                              className="h-3 bg-amber-100"
-                            />
-                            <p className="text-center text-sm text-amber-600 font-medium">
-                              {pointsNeeded} more points needed! 💪
+                            <Progress value={Math.min(progress, 100)} className="h-2" />
+                            <p className="text-xs text-muted-foreground">
+                              {pointsNeeded} more points needed
                             </p>
                           </div>
                         </CardContent>
@@ -312,7 +321,18 @@ function TreasuryPageContent() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                          <div className="text-3xl">🎁</div>
+                          {/* Reward Image */}
+                          {redemption.reward.image ? (
+                            <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
+                              <img
+                                src={redemption.reward.image}
+                                alt={redemption.reward.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="text-3xl">🎁</div>
+                          )}
                           <div>
                             <h3 className="text-lg font-semibold">{redemption.reward.title}</h3>
                             {redemption.reward.description && (
@@ -379,7 +399,18 @@ function TreasuryPageContent() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                          <div className="text-3xl">✅</div>
+                          {/* Reward Image */}
+                          {redemption.reward.image ? (
+                            <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
+                              <img
+                                src={redemption.reward.image}
+                                alt={redemption.reward.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="text-3xl">✅</div>
+                          )}
                           <div>
                             <h3 className="text-lg font-semibold text-green-800">{redemption.reward.title}</h3>
                             {redemption.reward.description && (
