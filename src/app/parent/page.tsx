@@ -11,6 +11,7 @@ import { Badge } from "~/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { Checkbox } from "~/components/ui/checkbox";
 import { ProtectedRoute } from "~/components/protected-route";
 import {
   Plus,
@@ -103,6 +104,9 @@ function ParentDashboardContent() {
     assignedUserIds: [] as string[],
   });
 
+  // Multi-select state for quest completions
+  const [selectedCompletions, setSelectedCompletions] = useState<string[]>([]);
+
   // Set up real-time updates
   useRealtimeUpdates();
 
@@ -154,7 +158,7 @@ function ParentDashboardContent() {
   // Use the real-time pending completions hook
   const { data: pendingCompletions } = useRealtimePendingCompletions();
   const { data: leaderboard } = useRealtimeLeaderboard();
-  const { data: pendingRedemptions } = api.reward.getPendingRedemptions.useQuery(
+  const { data: pendingRedemptions, refetch: refetchPendingRedemptions } = api.reward.getPendingRedemptions.useQuery(
     undefined,
     { 
       enabled: !!family, 
@@ -360,11 +364,38 @@ function ParentDashboardContent() {
     onError: (error) => toast.error(error.message),
   });
 
+  // Batch approval/rejection functions
+  const batchApproveCompletions = async (completionIds: string[]) => {
+    try {
+      await Promise.all(
+        completionIds.map(id => approveQuestMutation.mutateAsync({ completionId: id }))
+      );
+      toast.success(`✅ ${completionIds.length} quests approved!`);
+      setSelectedCompletions([]);
+    } catch (error) {
+      toast.error("Some approvals failed. Please try again.");
+    }
+  };
+
+  const batchRejectCompletions = async (completionIds: string[]) => {
+    try {
+      await Promise.all(
+        completionIds.map(id => rejectQuestMutation.mutateAsync({ completionId: id }))
+      );
+      toast.success(`❌ ${completionIds.length} quests rejected.`);
+      setSelectedCompletions([]);
+    } catch (error) {
+      toast.error("Some rejections failed. Please try again.");
+    }
+  };
+
   const fulfillRewardMutation = api.reward.fulfill.useMutation({
     onSuccess: () => {
       toast.success("🎁 Reward marked as fulfilled!");
-      // Immediate cache invalidation
+      // Immediate cache invalidation and refetch for both parent and child views
       void utils.reward.getPendingRedemptions.invalidate();
+      void utils.reward.getMyRedemptions.invalidate(); // This will update child's treasury
+      void refetchPendingRedemptions(); // Immediate refetch for parent view
     },
     onError: (error) => toast.error(error.message),
   });
@@ -547,7 +578,7 @@ function ParentDashboardContent() {
             className="text-xs px-2 h-7"
           >
             <span className="hidden sm:inline">Sign Out</span>
-            <span className="sm:hidden">Out</span>
+            <span className="sm:hidden">Sign Out</span>
           </Button>
         </div>
       </div>
@@ -630,17 +661,87 @@ function ParentDashboardContent() {
             {(pendingCompletions && pendingCompletions.length > 0) && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Clock className="w-5 h-5 text-accent" />
-                    <span>Quest Reviews Needed</span>
-                    <Badge variant="secondary">{pendingCompletions.length}</Badge>
-                  </CardTitle>
+                  <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                    <CardTitle className="flex items-center space-x-2">
+                      <Clock className="w-5 h-5 text-accent" />
+                      <span>Quest Reviews Needed</span>
+                      <Badge variant="secondary">{pendingCompletions.length}</Badge>
+                    </CardTitle>
+                    
+                    {/* Batch Action Buttons - On new line for mobile */}
+                    {selectedCompletions.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">
+                          {selectedCompletions.length} selected
+                        </span>
+                        <Button
+                          size="sm"
+                          onClick={() => batchApproveCompletions(selectedCompletions)}
+                          disabled={approveQuestMutation.isPending || rejectQuestMutation.isPending}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Approve All
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => batchRejectCompletions(selectedCompletions)}
+                          disabled={approveQuestMutation.isPending || rejectQuestMutation.isPending}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Reject All
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedCompletions([])}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Select All Checkbox */}
+                  <div className="flex items-center space-x-2 pt-2">
+                    <Checkbox
+                      id="select-all"
+                      checked={selectedCompletions.length === pendingCompletions.length && pendingCompletions.length > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedCompletions(pendingCompletions.map(c => c.id));
+                        } else {
+                          setSelectedCompletions([]);
+                        }
+                      }}
+                      className="border-2 border-gray-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    />
+                    <Label htmlFor="select-all" className="text-sm text-muted-foreground">
+                      Select all ({pendingCompletions.length})
+                    </Label>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {pendingCompletions.map((completion) => (
-                      <div key={completion.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-2 border border-border rounded-lg space-y-2 sm:space-y-0">
-                        <div className="flex items-center space-x-2 min-w-0 flex-1">
+                      <div key={completion.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg space-y-2 sm:space-y-0 transition-colors ${
+                        selectedCompletions.includes(completion.id) ? 'border-primary bg-primary/5' : 'border-border'
+                      }`}>
+                        <div className="flex items-center space-x-3 min-w-0 flex-1">
+                          {/* Selection Checkbox */}
+                          <Checkbox
+                            checked={selectedCompletions.includes(completion.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedCompletions(prev => [...prev, completion.id]);
+                              } else {
+                                setSelectedCompletions(prev => prev.filter(id => id !== completion.id));
+                              }
+                            }}
+                            className="border-2 border-gray-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          />
+                          
                           <ProfileAvatar
                             src={completion.user.image || undefined}
                             name={completion.user.name || undefined}
@@ -655,25 +756,31 @@ function ParentDashboardContent() {
                               {new Date(completion.completedAt).toLocaleString()}
                             </p>
                           </div>
+                          <Badge variant="outline" className="text-xs px-2">
+                            +{completion.quest.points} pts
+                          </Badge>
                         </div>
-                        <div className="flex items-center space-x-1 sm:flex-shrink-0">
-                          <Badge variant="outline" className="text-xs px-1">+{completion.quest.points} pts</Badge>
+                        
+                        {/* Individual Action Buttons */}
+                        <div className="flex items-center space-x-3 sm:flex-shrink-0">
                           <Button
                             size="sm"
                             onClick={() => approveQuestMutation.mutate({ completionId: completion.id })}
                             disabled={approveQuestMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700 text-white h-7 w-7 p-0"
+                            className="bg-green-600 hover:bg-green-700 text-white px-3"
                           >
-                            <CheckCircle className="w-3 h-3" />
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Approve
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => rejectQuestMutation.mutate({ completionId: completion.id })}
                             disabled={rejectQuestMutation.isPending}
-                            className="h-7 w-7 p-0"
+                            className="border-red-200 text-red-600 hover:bg-red-50 px-3"
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-4 h-4 mr-1" />
+                            Reject
                           </Button>
                         </div>
                       </div>
