@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -15,122 +12,116 @@ model Family {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  members   User[]
   quests    Quest[]
   rewards   Reward[]
+  members   User[]
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String? // Profile photo URL from Vercel Blob
-  role          UserRole  @default(CHILD)
-  points        Int       @default(0)
-  totalPoints   Int       @default(0)
-  permalink     String?   @unique // For child login
-  familyId      String?
-  family        Family?   @relation(fields: [familyId], references: [id])
-  accounts         Account[]
-  sessions         Session[]
-  assignments      QuestAssignment[]
-  completions      QuestCompletion[]
+  id                String             @id @default(cuid())
+  name              String?
+  email             String?            @unique
+  emailVerified     DateTime?
+  image             String?
+  role              UserRole           @default(CHILD)
+  points            Int                @default(0)
+  permalink         String?            @unique
+  familyId          String?
+  totalPoints       Int                @default(0)
+  accounts          Account[]
+  assignments       QuestAssignment[]
+  completions       QuestCompletion[]
   rewardAssignments RewardAssignment[]
-  redemptions      RewardRedemption[]
-}
-
-enum UserRole {
-  PARENT
-  CHILD
+  redemptions       RewardRedemption[]
+  sessions          Session[]
+  family            Family?            @relation(fields: [familyId], references: [id])
 }
 
 model Quest {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   title       String
-  points      Int      @default(1)
+  points      Int               @default(1)
   icon        String?
-  image       String?  // Image URL from Vercel Blob
-  frequency   String   // 'daily', 'weekly', 'monthly', 'once'
-  weeklyDays  String?  // JSON array of day numbers (0-6, 0=Sunday) for weekly quests
-  monthlyDate Int?     // Day of month (1-31) for monthly quests
+  frequency   String
   familyId    String
-  family      Family   @relation(fields: [familyId], references: [id])
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  monthlyDate Int?
+  weeklyDays  String?
+  image       String?
+  family      Family            @relation(fields: [familyId], references: [id])
   assignments QuestAssignment[]
   completions QuestCompletion[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model QuestAssignment {
   id      String @id @default(cuid())
   questId String
-  quest   Quest  @relation(fields: [questId], references: [id], onDelete: Cascade)
   userId  String
+  quest   Quest  @relation(fields: [questId], references: [id], onDelete: Cascade)
   user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([questId, userId])
 }
 
 model QuestCompletion {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   questId     String
-  quest       Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  completedAt DateTime @default(now())
+  completedAt DateTime  @default(now())
   approvedAt  DateTime?
+  status      String
   collectedAt DateTime?
-  status      String   // 'pending', 'approved', 'rejected', 'collected'
+  quest       Quest     @relation(fields: [questId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Reward {
-  id          String   @id @default(cuid())
+  id          String             @id @default(cuid())
   title       String
   description String?
-  image       String?  // Image URL from Vercel Blob
   pointsCost  Int
   familyId    String
-  family      Family   @relation(fields: [familyId], references: [id])
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  image       String?
+  family      Family             @relation(fields: [familyId], references: [id])
   assignments RewardAssignment[]
   redemptions RewardRedemption[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model RewardAssignment {
   id       String @id @default(cuid())
   rewardId String
-  reward   Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
   userId   String
+  reward   Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([rewardId, userId])
 }
 
 model RewardRedemption {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   rewardId    String
-  reward      Reward   @relation(fields: [rewardId], references: [id], onDelete: Cascade)
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  redeemedAt  DateTime @default(now())
+  redeemedAt  DateTime  @default(now())
   fulfilledAt DateTime?
+  reward      Reward    @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Models for NextAuth.js
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -151,4 +142,9 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+enum UserRole {
+  PARENT
+  CHILD
 }

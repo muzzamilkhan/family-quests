@@ -5,16 +5,87 @@ import { TRPCError } from "@trpc/server";
 import { emitFamilyEvent, EVENT_TYPES } from "~/lib/events";
 
 export const questRouter = createTRPCRouter({
+  getTemplates: protectedProcedure.query(async () => {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+      const templatesPath = path.join(process.cwd(), 'public', 'quest-templates.json');
+      const templatesData = fs.readFileSync(templatesPath, 'utf8');
+      return JSON.parse(templatesData);
+    } catch (error) {
+      return [];
+    }
+  }),
+
+  createBatch: protectedProcedure
+    .input(
+      z.object({
+        templates: z.array(
+          z.object({
+            title: z.string().min(1),
+            points: z.number().min(1),
+            image: z.string().nullable().optional(),
+            frequency: z.enum(["daily"]).default("daily"),
+          })
+        ),
+        assignedUserIds: z.array(z.string()).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { familyId: true, role: true },
+      });
+
+      if (!user?.familyId || user.role !== "PARENT") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only parents can create quests",
+        });
+      }
+
+      const createdQuests = [];
+      
+      for (const template of input.templates) {
+        const quest = await ctx.db.quest.create({
+          data: {
+            title: template.title,
+            points: template.points,
+            image: template.image || null,
+            frequency: template.frequency,
+            familyId: user.familyId,
+            assignments: input.assignedUserIds?.length
+              ? {
+                  create: input.assignedUserIds.map((userId) => ({
+                    userId,
+                  })),
+                }
+              : undefined,
+          },
+          include: {
+            assignments: {
+              include: {
+                user: {
+                  select: { id: true, name: true },
+                },
+              },
+            },
+          },
+        });
+        createdQuests.push(quest);
+      }
+
+      return createdQuests;
+    }),
+
   create: protectedProcedure
     .input(
       z.object({
         title: z.string().min(1),
         points: z.number().min(1),
-        icon: z.string().optional(),
         image: z.string().optional(),
-        frequency: z.enum(["daily", "weekly", "monthly", "once"]).default("daily"),
-        weeklyDays: z.array(z.number().min(0).max(6)).optional(),
-        monthlyDate: z.number().min(1).max(31).optional(),
+        frequency: z.enum(["daily"]).default("daily"),
         assignedUserIds: z.array(z.string()).optional(),
       })
     )
@@ -37,8 +108,6 @@ export const questRouter = createTRPCRouter({
           points: input.points,
           image: input.image,
           frequency: input.frequency,
-          weeklyDays: input.weeklyDays ? JSON.stringify(input.weeklyDays) : null,
-          monthlyDate: input.monthlyDate,
           familyId: user.familyId,
           assignments: input.assignedUserIds?.length
             ? {
@@ -576,11 +645,8 @@ export const questRouter = createTRPCRouter({
         id: z.string(),
         title: z.string().min(1).optional(),
         points: z.number().min(1).optional(),
-        icon: z.string().optional(),
         image: z.string().optional(),
-        frequency: z.enum(["daily", "weekly", "monthly", "once"]).optional(),
-        weeklyDays: z.array(z.number().min(0).max(6)).optional(),
-        monthlyDate: z.number().min(1).max(31).optional(),
+        frequency: z.enum(["daily"]).optional(),
         assignedUserIds: z.array(z.string()).optional(),
       })
     )
@@ -636,11 +702,8 @@ export const questRouter = createTRPCRouter({
         data: {
           ...(input.title !== undefined && { title: input.title }),
           ...(input.points !== undefined && { points: input.points }),
-          ...(input.icon !== undefined && { icon: input.icon }),
           ...(input.image !== undefined && { image: input.image }),
           ...(input.frequency !== undefined && { frequency: input.frequency }),
-          ...(input.weeklyDays !== undefined && { weeklyDays: input.weeklyDays ? JSON.stringify(input.weeklyDays) : null }),
-          ...(input.monthlyDate !== undefined && { monthlyDate: input.monthlyDate }),
           ...assignmentUpdate,
         },
         include: {
@@ -749,5 +812,43 @@ export const questRouter = createTRPCRouter({
       });
 
       return { url: blob.url, quest: updatedQuest };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { familyId: true, role: true },
+      });
+
+      if (!user?.familyId || user.role !== "PARENT") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only parents can delete quests",
+        });
+      }
+
+      // Check if quest exists and belongs to user's family
+      const quest = await ctx.db.quest.findFirst({
+        where: {
+          id: input.id,
+          familyId: user.familyId,
+        },
+      });
+
+      if (!quest) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Quest not found or not owned by family",
+        });
+      }
+
+      // Delete the quest (cascade will handle assignments and completions)
+      await ctx.db.quest.delete({
+        where: { id: input.id },
+      });
+
+      return { success: true };
     }),
 });

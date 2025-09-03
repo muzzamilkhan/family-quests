@@ -1,0 +1,50 @@
+[
+  {
+    "title": "Brush Your Teeth",
+    "points": 5,
+    "image": "https://bkjsxcrgut6cches.public.blob.vercel-storage.com/quest-cmf21ejwa00035e1rdtcar85j-1756787521844-6UyJtsw02xRqsblyYab5w6ZpLqhuMx.jpg",
+    "frequency": "daily"
+  },
+  {
+    "title": "Put Away Dishes",
+    "points": 20,
+    "image": "https://bkjsxcrgut6cches.public.blob.vercel-storage.com/quest-cmf21m9vm0009vamwdjq3l7c9-1756787553190-L6OicUJZNUkWNu8RC01vUgSO7wLZ30.jpg",
+    "frequency": "daily"
+  },
+  {
+    "title": "Shower",
+    "points": 10,
+    "image": "https://bkjsxcrgut6cches.public.blob.vercel-storage.com/quest-cmf21k6if0001vamwg1ymr48j-1756787592859-Hls7YMmyMMBx9WmaWNxIoEETHxMYZ3.jpg",
+    "frequency": "daily"
+  },
+  {
+    "title": "Pick Up Toys",
+    "points": 15,
+    "image": "https://bkjsxcrgut6cches.public.blob.vercel-storage.com/quest-cmf21luwt0007vamwzgo1c295-1756787616218-aKB3mtmhmP3wEur9UOXaJiJHQobMoy.jpg",
+    "frequency": "daily"
+  },
+  {
+    "title": "Vacuum House",
+    "points": 15,
+    "image": "https://bkjsxcrgut6cches.public.blob.vercel-storage.com/quest-cmf21l1tx0005vamwjij7uo13-1756787644991-PwgjUeJo8nEKKabgxZlrXlTCrbLUeK.jpg",
+    "frequency": "daily"
+  },
+  {
+    "title": "Tidy Clothes",
+    "points": 10,
+    "image": "https://bkjsxcrgut6cches.public.blob.vercel-storage.com/quest-cmf21kq3i0003vamwaumb4b11-1756787769522-ZHQfTrVmCsZhNxlqbx6AZNEPOkYpA2.jpg",
+    "frequency": "daily"
+  },
+  {
+    "title": "Tidy Up Your Dungeon (Room)",
+    "points": 30,
+    "image": "https://bkjsxcrgut6cches.public.blob.vercel-storage.com/quest-cmf1vqknw000lzd9ih9bp5s90-1756785718686-N5EBuVZgkoVrQ6aTYEHrL8pj0Nr8Gw.jpg",
+    "frequency": "daily"
+  },
+  {
+    "title": "Homework (30 mins)",
+    "points": 10,
+    "image": "https://bkjsxcrgut6cches.public.blob.vercel-storage.com/quest-cmf2026jp0003mre56tbtoxpn-1756785620429-TNhUAf5XSD98k5tm1672KQgD6309Vz.jpg",
+    "frequency": "daily"
+  }
+]

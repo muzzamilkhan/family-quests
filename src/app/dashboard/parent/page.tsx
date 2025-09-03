@@ -25,7 +25,10 @@ import {
   Crown,
   Sparkles,
   Swords,
-  Trophy
+  Trophy,
+  Download,
+  FileText,
+  Trash2
 } from "lucide-react";
 import { api } from "~/lib/trpc-provider";
 import { toast } from "sonner";
@@ -45,15 +48,19 @@ export default function ParentDashboard() {
   const [editingQuest, setEditingQuest] = useState<any>(null);
   const [isEditingReward, setIsEditingReward] = useState(false);
   const [editingReward, setEditingReward] = useState<any>(null);
+  const [isQuestTemplateOpen, setIsQuestTemplateOpen] = useState(false);
+  const [isRewardTemplateOpen, setIsRewardTemplateOpen] = useState(false);
+  const [selectedQuestTemplates, setSelectedQuestTemplates] = useState<any[]>([]);
+  const [selectedRewardTemplates, setSelectedRewardTemplates] = useState<any[]>([]);
+  const [questToDelete, setQuestToDelete] = useState<any>(null);
+  const [rewardToDelete, setRewardToDelete] = useState<any>(null);
 
   // Quest form state
   const [questForm, setQuestForm] = useState({
     title: "",
     points: 1,
     image: undefined as string | undefined,
-    frequency: "daily" as "daily" | "weekly" | "monthly" | "once",
-    weeklyDays: [] as number[],
-    monthlyDate: 1,
+    frequency: "daily" as "daily",
     assignedUserIds: [] as string[],
   });
 
@@ -82,9 +89,7 @@ export default function ParentDashboard() {
     title: "",
     points: 1,
     image: undefined as string | undefined,
-    frequency: "daily" as "daily" | "weekly" | "monthly" | "once",
-    weeklyDays: [] as number[],
-    monthlyDate: 1,
+    frequency: "daily" as "daily",
     assignedUserIds: [] as string[],
   });
 
@@ -137,6 +142,14 @@ export default function ParentDashboard() {
       refetchOnWindowFocus: true,
     }
   );
+  const { data: questTemplates } = api.quest.getTemplates.useQuery(
+    undefined,
+    { retry: false }
+  );
+  const { data: rewardTemplates } = api.reward.getTemplates.useQuery(
+    undefined,
+    { retry: false }
+  );
   // Use the real-time pending completions hook
   const { data: pendingCompletions } = useRealtimePendingCompletions();
   const { data: leaderboard } = useRealtimeLeaderboard();
@@ -185,7 +198,7 @@ export default function ParentDashboard() {
       
       toast.success("🎯 Quest created successfully!");
       setIsAddingQuest(false);
-      setQuestForm({ title: "", points: 1, image: undefined, frequency: "daily", weeklyDays: [], monthlyDate: 1, assignedUserIds: [] });
+      setQuestForm({ title: "", points: 1, image: undefined, frequency: "daily", assignedUserIds: [] });
       // Immediate cache invalidation
       void utils.quest.getAll.invalidate();
     },
@@ -218,7 +231,7 @@ export default function ParentDashboard() {
       toast.success("✏️ Quest updated successfully!");
       setIsEditingQuest(false);
       setEditingQuest(null);
-      setEditQuestForm({ title: "", points: 1, image: undefined, frequency: "daily", weeklyDays: [], monthlyDate: 1, assignedUserIds: [] });
+      setEditQuestForm({ title: "", points: 1, image: undefined, frequency: "daily", assignedUserIds: [] });
       // Immediate cache invalidation
       void utils.quest.getAll.invalidate();
     },
@@ -355,6 +368,44 @@ export default function ParentDashboard() {
     onError: (error) => toast.error(error.message),
   });
 
+  const createBatchQuestsMutation = api.quest.createBatch.useMutation({
+    onSuccess: (quests) => {
+      toast.success(`🎯 ${quests.length} quests created from templates!`);
+      setIsQuestTemplateOpen(false);
+      setSelectedQuestTemplates([]);
+      void utils.quest.getAll.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const createBatchRewardsMutation = api.reward.createBatch.useMutation({
+    onSuccess: (rewards) => {
+      toast.success(`🏆 ${rewards.length} rewards added from templates!`);
+      setIsRewardTemplateOpen(false);
+      setSelectedRewardTemplates([]);
+      void utils.reward.getAll.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteQuestMutation = api.quest.delete.useMutation({
+    onSuccess: () => {
+      toast.success("🗑️ Quest deleted successfully!");
+      setQuestToDelete(null);
+      void utils.quest.getAll.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteRewardMutation = api.reward.delete.useMutation({
+    onSuccess: () => {
+      toast.success("🗑️ Reward deleted successfully!");
+      setRewardToDelete(null);
+      void utils.reward.getAll.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   // Event handlers
   const handleCreateQuest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -383,8 +434,6 @@ export default function ParentDashboard() {
       points: quest.points,
       image: undefined, // Reset image, will show current image in form
       frequency: quest.frequency,
-      weeklyDays: quest.weeklyDays ? JSON.parse(quest.weeklyDays) : [],
-      monthlyDate: quest.monthlyDate || 1,
       assignedUserIds: quest.assignments.map((a: any) => a.user.id),
     });
     setIsEditingQuest(true);
@@ -428,34 +477,40 @@ export default function ParentDashboard() {
     }
   };
 
-  // Helper function to format frequency details
-  const getFrequencyDetails = (quest: any) => {
-    switch (quest.frequency) {
-      case 'weekly':
-        if (quest.weeklyDays) {
-          const days = JSON.parse(quest.weeklyDays) as number[];
-          const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-          const selectedDays = days.map(day => dayNames[day]);
-          return selectedDays.join(", ");
-        }
-        return "Weekly";
-      case 'monthly':
-        if (quest.monthlyDate) {
-          const day = quest.monthlyDate;
-          const suffix = day === 1 || day === 21 || day === 31 ? "st" : 
-                        day === 2 || day === 22 ? "nd" : 
-                        day === 3 || day === 23 ? "rd" : "th";
-          return `Every ${day}${suffix}`;
-        }
-        return "Monthly";
-      case 'daily':
-        return "Daily";
-      case 'once':
-        return "One-time";
-      default:
-        return quest.frequency;
+  const handleBatchCreateQuests = async () => {
+    if (selectedQuestTemplates.length === 0) {
+      toast.error("Please select at least one quest template");
+      return;
     }
+    
+    await createBatchQuestsMutation.mutateAsync({
+      templates: selectedQuestTemplates,
+      assignedUserIds: [],
+    });
   };
+
+  const handleBatchCreateRewards = async () => {
+    if (selectedRewardTemplates.length === 0) {
+      toast.error("Please select at least one reward template");
+      return;
+    }
+    
+    await createBatchRewardsMutation.mutateAsync({
+      templates: selectedRewardTemplates,
+      assignedUserIds: [],
+    });
+  };
+
+  const handleDeleteQuest = async () => {
+    if (!questToDelete) return;
+    await deleteQuestMutation.mutateAsync({ id: questToDelete.id });
+  };
+
+  const handleDeleteReward = async () => {
+    if (!rewardToDelete) return;
+    await deleteRewardMutation.mutateAsync({ id: rewardToDelete.id });
+  };
+
 
   // Always render the same structure to avoid hydration mismatch
   const isLoading = status === "loading" || !session || !family;
@@ -677,13 +732,92 @@ export default function ParentDashboard() {
           <TabsContent value="quests" className="space-y-3">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
               <h2 className="text-lg font-bold">Quest Board</h2>
-              <Dialog open={isAddingQuest} onOpenChange={setIsAddingQuest}>
-                <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white text-xs h-8">
-                    <Plus className="w-3 h-3 mr-1" />
-                    Create Quest
-                  </Button>
-                </DialogTrigger>
+              <div className="flex space-x-2">
+                <Dialog open={isQuestTemplateOpen} onOpenChange={setIsQuestTemplateOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white text-xs h-8">
+                      <FileText className="w-3 h-3 mr-1" />
+                      Templates
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Quest Templates</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {questTemplates && questTemplates.length > 0 ? (
+                        <>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                            {questTemplates.map((template: any, index: number) => (
+                              <div
+                                key={index}
+                                className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                                  selectedQuestTemplates.includes(template)
+                                    ? "border-primary bg-primary/10"
+                                    : "border-border hover:border-primary/50"
+                                }`}
+                                onClick={() => {
+                                  const isSelected = selectedQuestTemplates.includes(template);
+                                  if (isSelected) {
+                                    setSelectedQuestTemplates(prev => 
+                                      prev.filter(t => t !== template)
+                                    );
+                                  } else {
+                                    setSelectedQuestTemplates(prev => [...prev, template]);
+                                  }
+                                }}
+                              >
+                                {template.image && (
+                                  <div className="w-full h-20 mb-2 rounded overflow-hidden">
+                                    <img
+                                      src={template.image}
+                                      alt={template.title}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                )}
+                                <h4 className="font-medium text-sm">{template.title}</h4>
+                                <p className="text-xs text-muted-foreground">
+                                  {template.points} points • {template.frequency}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t">
+                            <p className="text-sm text-muted-foreground">
+                              {selectedQuestTemplates.length} selected
+                            </p>
+                            <div className="space-x-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => setIsQuestTemplateOpen(false)}
+                                className="text-xs h-8"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={handleBatchCreateQuests}
+                                disabled={createBatchQuestsMutation.isPending}
+                                className="bg-gradient-to-r from-primary to-accent text-white text-xs h-8"
+                              >
+                                {createBatchQuestsMutation.isPending ? "Creating..." : "Create Selected"}
+                              </Button>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-muted-foreground">No quest templates available</p>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Dialog open={isAddingQuest} onOpenChange={setIsAddingQuest}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white text-xs h-8">
+                      <Plus className="w-3 h-3 mr-1" />
+                      Create Quest
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="max-w-md max-h-[95vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full mx-auto">
                   <DialogHeader className="pb-2">
                     <DialogTitle className="text-base">Create New Quest</DialogTitle>
@@ -701,64 +835,9 @@ export default function ParentDashboard() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="frequency" className="text-xs font-medium">Frequency</Label>
-                      <Select
-                        value={questForm.frequency}
-                        onValueChange={(value) => setQuestForm({ ...questForm, frequency: value as any })}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                          <SelectItem value="once">One-time</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-xs font-medium text-muted-foreground">Frequency</Label>
+                      <p className="text-xs text-muted-foreground">Daily (all quests are daily)</p>
                     </div>
-                    
-                    {/* Weekly Days Selection */}
-                    {questForm.frequency === "weekly" && (
-                      <div className="space-y-1">
-                        <Label className="text-xs font-medium">Days of Week</Label>
-                        <div className="grid grid-cols-7 gap-1">
-                          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
-                            <Button
-                              key={day}
-                              type="button"
-                              size="sm"
-                              variant={questForm.weeklyDays.includes(index) ? "default" : "outline"}
-                              onClick={() => {
-                                const newDays = questForm.weeklyDays.includes(index)
-                                  ? questForm.weeklyDays.filter(d => d !== index)
-                                  : [...questForm.weeklyDays, index];
-                                setQuestForm({ ...questForm, weeklyDays: newDays });
-                              }}
-                              className="h-7 text-xs px-1"
-                            >
-                              {day}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Monthly Date Selection */}
-                    {questForm.frequency === "monthly" && (
-                      <div className="space-y-1">
-                        <Label htmlFor="monthlyDate" className="text-xs font-medium">Day of Month</Label>
-                        <Input
-                          id="monthlyDate"
-                          type="number"
-                          min="1"
-                          max="31"
-                          value={questForm.monthlyDate || ''}
-                          onChange={(e) => setQuestForm({ ...questForm, monthlyDate: parseInt(e.target.value) || 1 })}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    )}
                     
                     <div className="space-y-1">
                       <Label htmlFor="pointsCost" className="text-xs font-medium">Point Cost</Label>
@@ -866,6 +945,7 @@ export default function ParentDashboard() {
                   </form>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
 
             {/* Quests Grid */}
@@ -877,14 +957,24 @@ export default function ParentDashboard() {
                       <Badge className="bg-gradient-to-r from-accent to-primary text-white text-xs px-1 py-0">
                         {quest.points} pts
                       </Badge>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleEditQuest(quest)}
-                        className="h-5 w-5 p-0 -mt-0.5 -mr-0.5"
-                      >
-                        <Edit className="w-2.5 h-2.5" />
-                      </Button>
+                      <div className="flex space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleEditQuest(quest)}
+                          className="h-5 w-5 p-0"
+                        >
+                          <Edit className="w-2.5 h-2.5" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => setQuestToDelete(quest)}
+                          className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-1">
                       {/* Quest Image */}
@@ -904,7 +994,7 @@ export default function ParentDashboard() {
                       
                       <div className="flex items-center justify-between text-xs">
                         <Badge variant="secondary" className="text-xs h-4 px-1">
-                          {getFrequencyDetails(quest)}
+                          Daily
                         </Badge>
                         <div className="flex items-center space-x-0.5">
                           {quest.assignments.slice(0, 2).map((assignment) => (
@@ -926,6 +1016,40 @@ export default function ParentDashboard() {
               ))}
             </div>
 
+            {/* Delete Quest Confirmation Dialog */}
+            <Dialog open={!!questToDelete} onOpenChange={(open) => !open && setQuestToDelete(null)}>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="text-base">Delete Quest?</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Are you sure you want to delete "<strong>{questToDelete?.title}</strong>"? 
+                  </p>
+                  <p className="text-sm text-destructive">
+                    This action cannot be undone. All quest completions and assignments will be permanently deleted.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setQuestToDelete(null)}
+                      className="flex-1 h-8 text-xs"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteQuest}
+                      disabled={deleteQuestMutation.isPending}
+                      className="flex-1 h-8 text-xs"
+                    >
+                      {deleteQuestMutation.isPending ? "Deleting..." : "Delete Quest"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             {/* Edit Quest Dialog */}
             <Dialog open={isEditingQuest} onOpenChange={setIsEditingQuest}>
               <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto pb-4 w-[calc(100vw-1rem)] sm:w-full mx-auto">
@@ -945,62 +1069,9 @@ export default function ParentDashboard() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="editFrequency" className="text-xs font-medium">Frequency</Label>
-                    <Select
-                      value={editQuestForm.frequency}
-                      onValueChange={(value) => setEditQuestForm({ ...editQuestForm, frequency: value as any })}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="once">One-time</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs font-medium text-muted-foreground">Frequency</Label>
+                    <p className="text-xs text-muted-foreground">Daily (all quests are daily)</p>
                   </div>
-                  
-                  {/* Weekly Days Selection for Edit */}
-                  {editQuestForm.frequency === "weekly" && (
-                    <div className="space-y-2">
-                      <Label>Days of Week</Label>
-                      <div className="grid grid-cols-7 gap-2">
-                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
-                          <Button
-                            key={day}
-                            type="button"
-                            size="sm"
-                            variant={editQuestForm.weeklyDays.includes(index) ? "default" : "outline"}
-                            onClick={() => {
-                              const newDays = editQuestForm.weeklyDays.includes(index)
-                                ? editQuestForm.weeklyDays.filter(d => d !== index)
-                                : [...editQuestForm.weeklyDays, index];
-                              setEditQuestForm({ ...editQuestForm, weeklyDays: newDays });
-                            }}
-                          >
-                            {day}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Monthly Date Selection for Edit */}
-                  {editQuestForm.frequency === "monthly" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="editMonthlyDate">Day of Month</Label>
-                      <Input
-                        id="editMonthlyDate"
-                        type="number"
-                        min="1"
-                        max="31"
-                        value={editQuestForm.monthlyDate || ''}
-                        onChange={(e) => setEditQuestForm({ ...editQuestForm, monthlyDate: parseInt(e.target.value) || 1 })}
-                      />
-                    </div>
-                  )}
                   
                   <div className="space-y-3">
                     <div className="space-y-1">
@@ -1016,7 +1087,7 @@ export default function ParentDashboard() {
                     <div className="space-y-1">
                       <Label className="text-xs font-medium">Quest Image (Optional)</Label>
                       <ImageUpload
-                        currentImage={editingQuest?.image || null}
+                        currentImage={editingQuest?.image || undefined}
                         onImageChange={(imageData) => setEditQuestForm({ ...editQuestForm, image: imageData })}
                         placeholder="Update quest image"
                         className="h-full"
@@ -1111,13 +1182,95 @@ export default function ParentDashboard() {
           <TabsContent value="treasury" className="space-y-3">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
               <h2 className="text-lg font-bold">Treasury</h2>
-              <Dialog open={isAddingReward} onOpenChange={setIsAddingReward}>
-                <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-white text-xs h-8">
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Reward
-                  </Button>
-                </DialogTrigger>
+              <div className="flex space-x-2">
+                <Dialog open={isRewardTemplateOpen} onOpenChange={setIsRewardTemplateOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white text-xs h-8">
+                      <FileText className="w-3 h-3 mr-1" />
+                      Templates
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Reward Templates</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {rewardTemplates && rewardTemplates.length > 0 ? (
+                        <>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                            {rewardTemplates.map((template: any, index: number) => (
+                              <div
+                                key={index}
+                                className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                                  selectedRewardTemplates.includes(template)
+                                    ? "border-accent bg-accent/10"
+                                    : "border-border hover:border-accent/50"
+                                }`}
+                                onClick={() => {
+                                  const isSelected = selectedRewardTemplates.includes(template);
+                                  if (isSelected) {
+                                    setSelectedRewardTemplates(prev => 
+                                      prev.filter(t => t !== template)
+                                    );
+                                  } else {
+                                    setSelectedRewardTemplates(prev => [...prev, template]);
+                                  }
+                                }}
+                              >
+                                {template.image && (
+                                  <div className="w-full h-20 mb-2 rounded overflow-hidden">
+                                    <img
+                                      src={template.image}
+                                      alt={template.title}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                )}
+                                <h4 className="font-medium text-sm">{template.title}</h4>
+                                <p className="text-xs text-muted-foreground">
+                                  {template.pointsCost} points
+                                </p>
+                                {template.description && (
+                                  <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t">
+                            <p className="text-sm text-muted-foreground">
+                              {selectedRewardTemplates.length} selected
+                            </p>
+                            <div className="space-x-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => setIsRewardTemplateOpen(false)}
+                                className="text-xs h-8"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={handleBatchCreateRewards}
+                                disabled={createBatchRewardsMutation.isPending}
+                                className="bg-gradient-to-r from-accent to-primary text-white text-xs h-8"
+                              >
+                                {createBatchRewardsMutation.isPending ? "Creating..." : "Create Selected"}
+                              </Button>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-muted-foreground">No reward templates available</p>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Dialog open={isAddingReward} onOpenChange={setIsAddingReward}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-white text-xs h-8">
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Reward
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full mx-auto">
                   <DialogHeader className="pb-2">
                     <DialogTitle className="text-base">Add New Reward</DialogTitle>
@@ -1251,6 +1404,7 @@ export default function ParentDashboard() {
                   </form>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
@@ -1261,14 +1415,24 @@ export default function ParentDashboard() {
                       <Badge className="bg-gradient-to-r from-accent to-primary text-white text-xs px-1 py-0">
                         {reward.pointsCost} pts
                       </Badge>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleEditReward(reward)}
-                        className="h-5 w-5 p-0 -mt-0.5 -mr-0.5"
-                      >
-                        <Edit className="w-2.5 h-2.5" />
-                      </Button>
+                      <div className="flex space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleEditReward(reward)}
+                          className="h-5 w-5 p-0"
+                        >
+                          <Edit className="w-2.5 h-2.5" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => setRewardToDelete(reward)}
+                          className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </Button>
+                      </div>
                     </div>
                     
                     {reward.title && (
@@ -1318,6 +1482,40 @@ export default function ParentDashboard() {
                 </Card>
               ))}
             </div>
+
+            {/* Delete Reward Confirmation Dialog */}
+            <Dialog open={!!rewardToDelete} onOpenChange={(open) => !open && setRewardToDelete(null)}>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="text-base">Delete Reward?</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Are you sure you want to delete "<strong>{rewardToDelete?.title}</strong>"?
+                  </p>
+                  <p className="text-sm text-destructive">
+                    This action cannot be undone. All reward redemptions and assignments will be permanently deleted.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setRewardToDelete(null)}
+                      className="flex-1 h-8 text-xs"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteReward}
+                      disabled={deleteRewardMutation.isPending}
+                      className="flex-1 h-8 text-xs"
+                    >
+                      {deleteRewardMutation.isPending ? "Deleting..." : "Delete Reward"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Edit Reward Dialog */}
             <Dialog open={isEditingReward} onOpenChange={setIsEditingReward}>
