@@ -998,7 +998,7 @@ function ParentDashboardContent() {
                   <DialogTrigger asChild>
                     <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white text-xs h-8">
                       <Plus className="w-3 h-3 mr-1" />
-                      Create Quest
+                      Add
                     </Button>
                   </DialogTrigger>
                 <DialogContent className="max-w-md max-h-[95vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full mx-auto">
@@ -1458,7 +1458,7 @@ function ParentDashboardContent() {
                   <DialogTrigger asChild>
                     <Button className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-white text-xs h-8">
                       <Plus className="w-3 h-3 mr-1" />
-                      Add Reward
+                      Add
                     </Button>
                   </DialogTrigger>
                 <DialogContent className="max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full mx-auto">
