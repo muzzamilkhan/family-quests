@@ -33,4 +33,56 @@ export const templateRequestRouter = createTRPCRouter({
 
       return templateRequest;
     }),
+
+  getAll: protectedProcedure.query(async ({ ctx }) => {
+    const user = await ctx.db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: { isAdmin: true },
+    });
+
+    if (!user?.isAdmin) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only admins can view template requests",
+      });
+    }
+
+    return await ctx.db.templateRequest.findMany({
+      include: {
+        family: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }),
+
+  updateStatus: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        status: z.enum(["PENDING", "DONE", "IGNORED"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { isAdmin: true },
+      });
+
+      if (!user?.isAdmin) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can update template request status",
+        });
+      }
+
+      return await ctx.db.templateRequest.update({
+        where: { id: input.id },
+        data: { status: input.status },
+      });
+    }),
 });

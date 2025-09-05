@@ -157,6 +157,28 @@ model TemplateRequest {
   updatedAt DateTime       @updatedAt
 }
 
+model QuestTemplate {
+  id        String   @id @default(cuid())
+  title     String
+  points    Int
+  image     String?
+  frequency String
+  live      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RewardTemplate {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  image       String?
+  pointsCost  Int
+  live        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 enum UserRole {
   PARENT
   CHILD
@@ -170,4 +192,5 @@ enum TemplateType {
 enum TemplateStatus {
   PENDING
   DONE
+  IGNORED
 }

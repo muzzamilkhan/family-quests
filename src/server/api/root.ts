@@ -5,6 +5,8 @@ import { rewardRouter } from "./routers/reward";
 import { userRouter } from "./routers/user";
 import { realtimeRouter } from "./routers/realtime";
 import { templateRequestRouter } from "./routers/templateRequest";
+import { questTemplateRouter } from "./routers/questTemplate";
+import { rewardTemplateRouter } from "./routers/rewardTemplate";
 
 /**
  * This is the primary router for your server.
@@ -18,6 +20,8 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   realtime: realtimeRouter,
   templateRequest: templateRequestRouter,
+  questTemplate: questTemplateRouter,
+  rewardTemplate: rewardTemplateRouter,
 });
 
 // export type definition of API

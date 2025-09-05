@@ -119,10 +119,13 @@ function ParentDashboardContent() {
   useRealtimeUpdates();
 
   // API queries - must be called unconditionally
+  const { data: currentUser } = api.user.getProfile.useQuery(undefined, {
+    enabled: !!session,
+  });
   const { data: family, refetch: refetchFamily, error: familyError } = api.family.getMyFamily.useQuery(
     undefined,
-    { 
-      retry: false, 
+    {
+      retry: false,
       enabled: !!session,
       refetchInterval: 10000, // Refetch family data every 10 seconds
       refetchOnWindowFocus: true,
@@ -598,14 +601,25 @@ function ParentDashboardContent() {
               <p className="text-xs text-muted-foreground hidden sm:block leading-none">Quest Master Dashboard</p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="text-xs px-2 h-7"
-          >
-            <span className="hidden sm:inline">Sign Out</span>
-            <span className="sm:hidden">Sign Out</span>
-          </Button>
+          <div className="flex space-x-2">
+            {currentUser?.isAdmin && (
+              <Button
+                variant="outline"
+                onClick={() => router.push("/admin")}
+                className="text-xs px-2 h-7"
+              >
+                Admin
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="text-xs px-2 h-7"
+            >
+              <span className="hidden sm:inline">Sign Out</span>
+              <span className="sm:hidden">Sign Out</span>
+            </Button>
+          </div>
         </div>
       </div>
 

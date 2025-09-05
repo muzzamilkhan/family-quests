@@ -5,17 +5,13 @@ import { TRPCError } from "@trpc/server";
 import { emitFamilyEvent, EVENT_TYPES } from "~/lib/events";
 
 export const questRouter = createTRPCRouter({
-  getTemplates: protectedProcedure.query(async () => {
-    const fs = require('fs');
-    const path = require('path');
-    
-    try {
-      const templatesPath = path.join(process.cwd(), 'public', 'quest-templates.json');
-      const templatesData = fs.readFileSync(templatesPath, 'utf8');
-      return JSON.parse(templatesData);
-    } catch (error) {
-      return [];
-    }
+  getTemplates: protectedProcedure.query(async ({ ctx }) => {
+    return await ctx.db.questTemplate.findMany({
+      where: {
+        live: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
   }),
 
   createBatch: protectedProcedure

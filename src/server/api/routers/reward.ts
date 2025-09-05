@@ -4,17 +4,13 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 
 export const rewardRouter = createTRPCRouter({
-  getTemplates: protectedProcedure.query(async () => {
-    const fs = require('fs');
-    const path = require('path');
-    
-    try {
-      const templatesPath = path.join(process.cwd(), 'public', 'reward-templates.json');
-      const templatesData = fs.readFileSync(templatesPath, 'utf8');
-      return JSON.parse(templatesData);
-    } catch (error) {
-      return [];
-    }
+  getTemplates: protectedProcedure.query(async ({ ctx }) => {
+    return await ctx.db.rewardTemplate.findMany({
+      where: {
+        live: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
   }),
 
   createBatch: protectedProcedure
