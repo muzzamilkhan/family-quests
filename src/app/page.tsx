@@ -7,6 +7,7 @@ import { Card } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Sword, Sparkles, Heart } from "lucide-react";
 import { api } from "~/lib/trpc-provider";
+import { AddToHomeScreen } from "~/components/add-to-home-screen";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -60,6 +61,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background flex items-center justify-center p-4">
+      <AddToHomeScreen />
       <div className="max-w-md w-full space-y-8">
         {/* Hero Section */}
         <div className="text-center space-y-6">

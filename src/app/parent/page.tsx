@@ -39,6 +39,7 @@ import { ProfileAvatar } from "~/components/profile-avatar";
 import { EditableProfile } from "~/components/editable-profile";
 import { ImageUpload } from "~/components/image-upload";
 import { useRealtimeUpdates, useRealtimePendingCompletions, useRealtimeLeaderboard } from "~/hooks/use-realtime-updates";
+import { AddToHomeScreen } from "~/components/add-to-home-screen";
 
 function ParentDashboardContent() {
   const { data: session, status } = useSession();
@@ -589,6 +590,7 @@ function ParentDashboardContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background">
+      <AddToHomeScreen />
       {/* Header */}
       <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-12 items-center justify-between px-3">

@@ -25,6 +25,7 @@ import { ProfileAvatar } from "~/components/profile-avatar";
 import { EditableProfile } from "~/components/editable-profile";
 import { PointsCounter } from "~/components/points-counter";
 import { useRealtimeUpdates, useRealtimeMyQuests, useRealtimeProfile, useRealtimeLeaderboard } from "~/hooks/use-realtime-updates";
+import { AddToHomeScreen } from "~/components/add-to-home-screen";
 
 // Quest completion status types
 type QuestStatus = "available" | "completed" | "approved" | "treasure" | "rejected";
@@ -289,6 +290,7 @@ function ChildDashboardContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background p-4">
+      <AddToHomeScreen />
       {/* Header */}
       <div className="h-auto bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-20 items-center justify-between px-6">
