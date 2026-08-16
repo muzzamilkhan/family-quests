@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card } from "~/components/ui/card";
@@ -18,8 +18,13 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if not authenticated
+  useEffect(() => {
+    if (!session) {
+      router.push("/");
+    }
+  }, [session, router]);
+
   if (!session) {
-    router.push("/");
     return null;
   }
 
